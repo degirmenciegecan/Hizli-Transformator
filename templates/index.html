@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Hızlı Transformatör</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- html2pdf for client side PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <div class="logo">
+                <button id="toggle-sidebar" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-primary); margin-right: 10px; display: flex; align-items: center;" title="Menüyü Gizle/Göster">☰</button>
+                <div class="icon">⚡</div>
+                <h1>Hızlı Transformatör</h1>
+            </div>
+            <div class="live-prices" id="live-prices">
+                <div class="price-widget">
+                    <span class="label">Bakır (USD/kg)</span>
+                    <span class="value" id="cu-price">Yükleniyor...</span>
+                    <a href="#" id="cu-source" target="_blank" class="source-link" title="Veri Kaynağı">🔗</a>
+                </div>
+                <div class="price-widget">
+                    <span class="label">Alüminyum (USD/kg)</span>
+                    <span class="value" id="al-price">Yükleniyor...</span>
+                    <a href="#" id="al-source" target="_blank" class="source-link" title="Veri Kaynağı">🔗</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="form-group" style="margin-bottom: var(--space-4);">
+                    <h2>📄 PDF Şartname Yükle (Otomatik Doldur)</h2>
+                    <input type="file" id="pdf-upload" accept="application/pdf" style="font-size: 0.8rem;">
+                    <div id="pdf-status" class="pdf-status"></div>
+                </div>
+
+                <form id="calc-form">
+                    <h2>Manuel Parametreler</h2>
+                    <div class="form-group">
+                        <label>Görünür Güç S (VA)</label>
+                        <input type="number" id="S" value="50000" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label>Primer Gerilimi V1 (V)</label>
+                        <input type="number" id="V1" value="34500" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label>Sekonder Gerilimi V2 (V)</label>
+                        <input type="number" id="V2" value="400" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label>Faz Sayısı</label>
+                        <select id="phase">
+                            <option value="3">3 Fazlı (Standart Dağıtım)</option>
+                            <option value="1">Tek Fazlı (Özel/Kırsal/Japonya)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Şebeke Frekansı (Hz)</label>
+                        <select id="frequency" required>
+                            <option value="50">50 Hz (Türkiye, Avrupa, Asya)</option>
+                            <option value="60">60 Hz (ABD, Kanada, Brezilya)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bağıl Kısa Devre Empedansı uk (%)</label>
+                        <input type="number" id="uk" value="4.5" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label>Boşta Çalışma Kaybı P0 (W)</label>
+                        <input type="number" id="P0" value="150" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label>Kısa Devre Kaybı Pk (W)</label>
+                        <input type="number" id="Pk" value="900" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label>Trafo Yağı Sınıfı</label>
+                        <select id="oil_type" required>
+                            <option value="mineral">Mineral Yağ (0.88 g/cm³)</option>
+                            <option value="natural_ester">Doğal Ester (0.915 g/cm³)</option>
+                            <option value="silicone">Silikon Yağ (0.96 g/cm³)</option>
+                            <option value="synthetic_ester">Sentetik Ester (0.97 g/cm³)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tasarım Sabiti k (E_t = k*√S)</label>
+                        <input type="number" id="k_constant" value="0.45" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Maksimum Sıcaklık Artışı ΔT (°C)</label>
+                        <input type="number" id="delta_T" value="60" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Primer Sargı Malzemesi (H.V)</label>
+                        <select id="material_hv" required>
+                            <option value="Cu">Bakır (Cu)</option>
+                            <option value="Al">Alüminyum (Al)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sekonder Sargı Malzemesi (L.V)</label>
+                        <select id="material_lv" required>
+                            <option value="Cu">Bakır (Cu)</option>
+                            <option value="Al">Alüminyum (Al)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-calculate" id="btn-calc">Hesapla ve Analiz Et</button>
+                </form>
+            </aside>
+
+            <section class="results-area">
+                <div id="results" class="results-grid hidden">
+                    <div class="card full-width visual-card">
+                        <h3>Mekanik Şematik Gösterim</h3>
+                        <div class="mechanical-tank-container">
+                            <!-- Corner Data -->
+                            <div class="corner-data corner-tl">V1 (H.V): <span id="vis-v1">34500 V</span></div>
+                            <div class="corner-data corner-tr">V2 (L.V): <span id="vis-v2">400 V</span></div>
+                            <div class="corner-data corner-bl">Yağ Sınıfı: <span id="vis-oil-type">Mineral Yağ</span></div>
+                            <div class="corner-data corner-br">Yağ Ağırlığı: <span id="vis-oil-weight">~176 Kg</span></div>
+                            
+                            <!-- Mechanical Transformer -->
+                            <div class="mech-transformer">
+                                <!-- Top Flatbar -->
+                                <div class="mech-flatbar top">
+                                    <div class="mech-bolt"></div>
+                                    <div class="mech-bolt"></div>
+                                </div>
+                                
+                                <!-- Coils and Core Legs -->
+                                <div class="mech-coils">
+                                    <!-- Left Coil Setup -->
+                                    <div class="mech-leg-wrapper">
+                                        <div class="mech-core-extension top"></div>
+                                        <div class="mech-coil left-coil">
+                                            <div class="mech-wire-out top-wire"></div>
+                                            <div class="mech-wire-out bottom-wire"></div>
+                                        </div>
+                                        <div class="mech-core-extension bottom"></div>
+                                    </div>
+                                    
+                                    <!-- Right Coil Setup -->
+                                    <div class="mech-leg-wrapper">
+                                        <div class="mech-core-extension top"></div>
+                                        <div class="mech-coil right-coil">
+                                            <div class="mech-wire-out top-wire"></div>
+                                            <div class="mech-wire-out bottom-wire"></div>
+                                        </div>
+                                        <div class="mech-core-extension bottom"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Bottom Flatbar -->
+                                <div class="mech-flatbar bottom">
+                                    <div class="mech-bolt"></div>
+                                    <div class="mech-bolt"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="note">İki sargılı basitleştirilmiş mekanik eşdeğer model.</div>
+                    </div>
+
+                    <div class="card electrical-card">
+                        <h3>⚡ Elektriksel Analiz</h3>
+                        <ul>
+                            <li><span>Primer Anma Akımı (I1):</span> <div><strong id="res-I1"></strong> A</div></li>
+                            <li><span>Sekonder Anma Akımı (I2):</span> <div><strong id="res-I2"></strong> A</div></li>
+                            <li><span>Sarım Oranı (a):</span> <div><strong id="res-a"></strong></div></li>
+                            <li><span>Kısa Devre Gerilimi (Vk):</span> <div><strong id="res-Vk"></strong> V</div></li>
+                            <li><span>Eşdeğer Empedans (Zk):</span> <div><strong id="res-Zk"></strong> Ω</div></li>
+                            <li><span>Eşdeğer Endüktans (Lk):</span> <div><strong id="res-Lk"></strong> mH</div></li>
+                            <li><span class="highlight">Tam Yük Verimi (cosφ=1):</span> <div class="highlight"><strong id="res-eff"></strong> %</div></li>
+                        </ul>
+                    </div>
+
+                    <div class="card full-width">
+                        <h3>🏭 Fiziksel İmalat Analizi</h3>
+                        <div class="cost-grid">
+                            <div class="cost-item">
+                                <h4 id="mfg-title-hv">Primer Sargı (H.V)</h4>
+                                <div class="mfg-data">Sarım Sayısı: <span id="res-hv-turns"></span> Tur</div>
+                                <div class="mfg-data">Kesit Alanı: <span id="res-hv-area"></span> mm²</div>
+                            </div>
+                            <div class="cost-item">
+                                <h4 id="mfg-title-lv">Sekonder Sargı (L.V)</h4>
+                                <div class="mfg-data">Sarım Sayısı: <span id="res-lv-turns"></span> Tur</div>
+                                <div class="mfg-data">Kesit Alanı: <span id="res-lv-area"></span> mm²</div>
+                            </div>
+                            <div class="cost-item">
+                                <h4>Ortak Nüve & Kasa</h4>
+                                <div class="mfg-data">Spesifik Gerilim (Et): <span id="res-et-val"></span> V/Tur</div>
+                                <div class="mfg-data">Kuru Ağırlık: <span id="res-dry-weight"></span> Kg</div>
+                                <div class="mfg-data">Islak Ağırlık: <span id="res-wet-weight"></span> Kg</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <h3>🌡️ Termodinamik ve Soğutma Analizi</h3>
+                        <div class="cost-grid">
+                            <div class="cost-item">
+                                <h4>Isı Üretimi & Soğutma</h4>
+                                <div class="mfg-data">Toplam Isı Kaybı: <span id="res-total-heat"></span> W</div>
+                                <div class="mfg-data">Gerekli Dalgalı Yüzey: <span id="res-cooling-area"></span> m²</div>
+                            </div>
+                            <div class="cost-item">
+                                <h4>Hacimsel Yağ Genleşmesi</h4>
+                                <div class="mfg-data">Kullanılacak Yağ: <span id="res-oil-vol"></span> Litre</div>
+                                <div class="mfg-data">Maksimum Genleşme: +<span id="res-exp-vol"></span> Litre</div>
+                            </div>
+                            <div class="cost-item">
+                                <h4>Yağ Fiziksel Katsayıları</h4>
+                                <div class="mfg-data">Özkütle: <span id="res-oil-den"></span> g/cm³</div>
+                                <div class="mfg-data">Genleşme Katsayısı (β): <span id="res-oil-beta"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <h3>💰 Sargı Maliyet Analizi (Canlı Kur İle)</h3>
+                        <div class="cost-grid">
+                            <div class="cost-item">
+                                <h4 id="cost-title-hv">Primer Sargı (H.V)</h4>
+                                <div class="weight"><span id="res-hv-weight"></span> kg</div>
+                                <div class="cost"><span id="res-hv-cost"></span> USD</div>
+                            </div>
+                            <div class="cost-item">
+                                <h4 id="cost-title-lv">Sekonder Sargı (L.V)</h4>
+                                <div class="weight"><span id="res-lv-weight"></span> kg</div>
+                                <div class="cost"><span id="res-lv-cost"></span> USD</div>
+                            </div>
+                            <div class="cost-item">
+                                <h4>Toplam İletken</h4>
+                                <div class="weight"><span id="res-total-weight"></span> kg</div>
+                                <div class="cost"><span id="res-total-cost"></span> USD</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 40px; margin-top: 40px; margin-bottom: 20px;">
+                        <button id="btn-reset" type="button" style="width: 250px; background-color: #718096; color: white; padding: 14px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 1.05rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            🔄 Başlangıca Dön
+                        </button>
+                        <button id="btn-download-pdf" type="button" style="width: 250px; background-color: #2b6cb0; color: white; padding: 14px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 1.05rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(43,108,176,0.2);">
+                            📥 Raporu PDF İndir
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="loading" class="loading-state hidden">
+                    <div class="spinner"></div>
+                    <p>API üzerinden piyasa verileri çekiliyor ve analiz ediliyor...</p>
+                </div>
+                
+                <div id="initial-state" class="initial-state">
+                    <div id="parallax-content">
+                        <img src="{{ url_for('static', filename='transformer-icon.png') }}" alt="Transformer Icon" style="max-width: 180px; margin-bottom: 20px;">
+                        <h2>Analize Başlamak İçin Bekleniyor</h2>
+                        <p>Lütfen soldaki formdan trafo etiket değerlerini girin ve hesapla butonuna tıklayın.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Hidden Template for Clean PDF Export -->
+    <div id="pdf-export-wrapper" class="print-only">
+        <div id="pdf-export-content" style="padding: 40px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; background: white; width: 100%; max-width: 100%;">
+            <style>
+                .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+                .pdf-table th, .pdf-table td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+                .pdf-table th { background-color: #f7fafc; color: #4a5568 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @media print {
+                    .pdf-table th { background-color: #f7fafc !important; color: #4a5568 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            </style>
+            <h1 style="text-align: center; border-bottom: 2px solid #2b6cb0; padding-bottom: 15px; margin-bottom: 30px; color: #1a202c;">Trafo Ar-Ge Hesaplama Raporu</h1>
+            
+            <h3 style="color: #2d3748; margin-bottom: 10px;">⚡ Elektriksel Analiz</h3>
+            <table class="pdf-table">
+                <tr><td width="50%">Primer Anma Akımı (I1)</td><td id="pdf-I1"></td></tr>
+                <tr><td>Sekonder Anma Akımı (I2)</td><td id="pdf-I2"></td></tr>
+                <tr><td>Sarım Oranı (a)</td><td id="pdf-a"></td></tr>
+                <tr><td>Kısa Devre Gerilimi (Vk)</td><td id="pdf-Vk"></td></tr>
+                <tr><td>Eşdeğer Empedans (Zk)</td><td id="pdf-Zk"></td></tr>
+                <tr><td>Eşdeğer Endüktans (Lk)</td><td id="pdf-Lk"></td></tr>
+                <tr><td><strong>Tam Yük Verimi (cosφ=1)</strong></td><td><strong id="pdf-eff"></strong></td></tr>
+            </table>
+
+            <h3 style="color: #2d3748; margin-bottom: 10px; margin-top: 30px;">🏭 Fiziksel İmalat Analizi</h3>
+            <table class="pdf-table">
+                <tr class="header-row"><th>Bileşen</th><th>Detaylar</th></tr>
+                <tr>
+                    <td><strong>Primer Sargı (H.V)</strong></td>
+                    <td>Sarım Sayısı: <span id="pdf-hv-turns"></span> Tur<br>Kesit Alanı: <span id="pdf-hv-area"></span> mm²</td>
+                </tr>
+                <tr>
+                    <td><strong>Sekonder Sargı (L.V)</strong></td>
+                    <td>Sarım Sayısı: <span id="pdf-lv-turns"></span> Tur<br>Kesit Alanı: <span id="pdf-lv-area"></span> mm²</td>
+                </tr>
+                <tr>
+                    <td><strong>Ortak Nüve & Kasa</strong></td>
+                    <td>Spesifik Gerilim (Et): <span id="pdf-et-val"></span> V/Tur<br>Kuru Ağırlık: <span id="pdf-dry-weight"></span> Kg<br>Islak Ağırlık: <span id="pdf-wet-weight"></span> Kg</td>
+                </tr>
+            </table>
+
+            <h3 style="color: #2d3748; margin-bottom: 10px; margin-top: 30px;">🌡️ Termodinamik ve Soğutma Analizi</h3>
+            <table class="pdf-table">
+                <tr><td width="50%">Toplam Isı Kaybı</td><td id="pdf-total-heat"></td></tr>
+                <tr><td>Gerekli Dalgalı Yüzey</td><td id="pdf-cooling-area"></td></tr>
+                <tr><td>Kullanılacak Yağ</td><td id="pdf-oil-vol"></td></tr>
+                <tr><td>Maksimum Genleşme</td><td id="pdf-exp-vol"></td></tr>
+                <tr><td>Özkütle</td><td id="pdf-oil-den"></td></tr>
+                <tr><td>Genleşme Katsayısı (β)</td><td id="pdf-oil-beta"></td></tr>
+            </table>
+
+            <h3 style="color: #2d3748; margin-bottom: 10px; margin-top: 30px;">💰 Sargı Maliyet Analizi (Canlı Kur İle)</h3>
+            <table class="pdf-table">
+                <tr class="header-row"><th>Bileşen</th><th>Ağırlık</th><th>Maliyet (USD)</th></tr>
+                <tr>
+                    <td>Primer Sargı (H.V)</td>
+                    <td id="pdf-hv-weight"></td>
+                    <td id="pdf-hv-cost"></td>
+                </tr>
+                <tr>
+                    <td>Sekonder Sargı (L.V)</td>
+                    <td id="pdf-lv-weight"></td>
+                    <td id="pdf-lv-cost"></td>
+                </tr>
+                <tr style="background-color: #ebf8ff; font-weight: bold;">
+                    <td>Toplam İletken</td>
+                    <td id="pdf-total-weight"></td>
+                    <td id="pdf-total-cost"></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
