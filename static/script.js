@@ -65,7 +65,10 @@ document.addEventListener('DOMContentLoaded', () => {
             k_constant: parseFloat(document.getElementById('k_constant').value),
             delta_T: parseFloat(document.getElementById('delta_T').value),
             material_hv: document.getElementById('material_hv').value,
-            material_lv: document.getElementById('material_lv').value
+            material_lv: document.getElementById('material_lv').value,
+            core_material: document.getElementById('core_material').value,
+            A_factor: document.getElementById('A_factor').value ? parseFloat(document.getElementById('A_factor').value) : null,
+            B_factor: document.getElementById('B_factor').value ? parseFloat(document.getElementById('B_factor').value) : null
         };
 
         try {
@@ -217,6 +220,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('pdf-hv-cost').textContent = moneyFormatter.format(res.cost.total.hv);
                 document.getElementById('pdf-lv-cost').textContent = moneyFormatter.format(res.cost.total.lv);
                 document.getElementById('pdf-total-cost').textContent = moneyFormatter.format(res.cost.total.total_cost);
+
+                // TOC Analizi Güncellemesi
+                if (res.toc_analysis) {
+                    updateText('res-loss-cost', res.toc_analysis.loss_cost);
+                    updateText('res-toc', res.toc_analysis.toc);
+                    updateText('res-core-type', res.toc_analysis.core_label);
+                    updateText('res-core-weight', res.toc_analysis.core_weight);
+                    
+                    if (res.toc_analysis.loss_cost !== "—" && usdTryRate) {
+                        const lossCostTry = res.toc_analysis.loss_cost * usdTryRate;
+                        updateText('res-loss-cost-try', lossCostTry.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    } else {
+                        updateText('res-loss-cost-try', "—");
+                    }
+
+                    if (res.toc_analysis.toc !== "—" && usdTryRate) {
+                        const tocTry = res.toc_analysis.toc * usdTryRate;
+                        updateText('res-toc-try', tocTry.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    } else {
+                        updateText('res-toc-try', "—");
+                    }
+                }
 
                 // Show results
                 loadingDiv.classList.add('hidden');

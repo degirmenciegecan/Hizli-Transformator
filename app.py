@@ -86,6 +86,9 @@ def calculate():
         delta_T = float(data.get('delta_T', 60))
         material_hv = data.get('material_hv', 'Cu')
         material_lv = data.get('material_lv', 'Cu')
+        core_material = data.get('core_material', 'M4')
+        A_factor = safe_float(data.get('A_factor')) or 8.0
+        B_factor = safe_float(data.get('B_factor')) or 2.0
         
         if None in [S, V1, V2]:
             S_kVA, Et, N1, N2, I1, I2, a = ("—",) * 7
@@ -167,8 +170,18 @@ def calculate():
             cost_hv = weight_hv * (prices["copper_usd_kg"] if material_hv == 'Cu' else prices["aluminum_usd_kg"])
             cost_lv = weight_lv * (prices["copper_usd_kg"] if material_lv == 'Cu' else prices["aluminum_usd_kg"])
             total_conductor_weight = weight_hv + weight_lv
+            # Core physics based on material
+            base_core_weight = (S_kVA ** 0.75) * 8.5
+            if core_material == 'M5':
+                core_weight = base_core_weight * 1.05
+                core_label = "M5 Silisli Sac (Yüksek Kayıp)"
+            elif core_material == 'Amorf':
+                core_weight = base_core_weight * 0.95
+                core_label = "Amorf Metal (Ultra Düşük Kayıp)"
+            else: # M4
+                core_weight = base_core_weight
+                core_label = "M4 Silisli Sac (Standart)"
             
-            core_weight = (S_kVA ** 0.75) * 8.5
             tank_weight = (S_kVA ** 0.7) * 6.5
             if material_hv == 'Al' or material_lv == 'Al':
                 core_weight *= 1.15
@@ -181,6 +194,7 @@ def calculate():
         else:
             prices, sources = {"copper_usd_kg": 0, "aluminum_usd_kg": 0}, {}
             weight_hv, weight_lv, cost_hv, cost_lv, total_conductor_weight, dry_weight, oil_volume = ("—",)*7
+            core_weight, tank_weight, core_label = "—", "—", "—"
         
         # Thermodynamic Calculations
         oil_props = {
@@ -218,14 +232,15 @@ def calculate():
         
         cost = {
             "prices": {
-                "copper": r2(prices["copper_usd_kg"]),
-                "aluminum": r2(prices["aluminum_usd_kg"])
+                "copper": r2(prices.get("copper_usd_kg", 0)),
+                "aluminum": r2(prices.get("aluminum_usd_kg", 0))
             },
-            "sources": sources,
             "weights": {
                 "hv": r2(weight_hv),
                 "lv": r2(weight_lv),
                 "total": r2(total_conductor_weight),
+                "core_weight": r2(core_weight),
+                "tank_weight": r2(tank_weight),
                 "dry": r2(dry_weight),
                 "wet": r2(wet_weight)
             },
@@ -236,15 +251,36 @@ def calculate():
             "total": {
                 "hv": r2(cost_hv),
                 "lv": r2(cost_lv),
-                "total_cost": r2(cost_hv + cost_lv)
+                "total_cost": r2((cost_hv if cost_hv != "—" else 0) + (cost_lv if cost_lv != "—" else 0)) if cost_hv != "—" else "—"
             }
         }
         
+        # TOC Calculation
+        loss_cost = 0
+        if P0 != "—" and P0 is not None and Pk != "—" and Pk is not None:
+            loss_cost = (A_factor * P0) + (B_factor * Pk)
+            
+        total_material_cost = cost["total"]["total_cost"] if cost["total"]["total_cost"] != "—" else 0
+        cw = core_weight if core_weight != "—" else 0
+        tw = tank_weight if tank_weight != "—" else 0
+        ow = oil_weight if oil_weight != "—" else 0
+        
+        purchase_price = (total_material_cost * 1.5) + (cw * 3.0) + (tw * 1.5) + (ow * 1.2)
+        toc = purchase_price + loss_cost
+        
+        toc_analysis = {
+            "loss_cost": round(loss_cost, 2),
+            "toc": round(toc, 2),
+            "core_label": core_label,
+            "core_weight": round(core_weight, 1) if core_weight != "—" else "—"
+        }
+
         return jsonify({
             "success": True,
             "electrical": electrical,
             "thermo": thermo,
-            "cost": cost
+            "cost": cost,
+            "toc_analysis": toc_analysis
         })
         
     except Exception as e:

@@ -110,6 +110,21 @@
                             <option value="Cu">Bakır (Cu)</option>
                             <option value="Al">Alüminyum (Al)</option>
                         </select>
+                    <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 10px;">
+                        <label>Nüve (Çekirdek) Malzemesi</label>
+                        <select id="core_material" required>
+                            <option value="M4">M4 Silisli Sac (Standart Kayıp)</option>
+                            <option value="M5">M5 Silisli Sac (Yüksek Kayıp)</option>
+                            <option value="Amorf">Amorf Metal (Ultra Düşük Kayıp)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label title="Boşta çalışma kaybı kapitalizasyon değeri">A Faktörü (USD/W)</label>
+                        <input type="number" id="A_factor" value="8" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label title="Yükte çalışma kaybı kapitalizasyon değeri">B Faktörü (USD/W)</label>
+                        <input type="number" id="B_factor" value="2" step="any" required>
                     </div>
                     <button type="submit" class="btn-calculate" id="btn-calc">Hesapla ve Analiz Et</button>
                 </form>
@@ -243,6 +258,25 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="card full-width electrical-card">
+                        <h3>📉 İhale ve TOC Analizi (Toplam Sahip Olma Maliyeti)</h3>
+                        <ul class="results-list">
+                            <li>
+                                <span>Toplam Kayıp Maliyeti (A × P0 + B × Pk):</span>
+                                <div><strong><span id="res-loss-cost"></span> USD</strong> <br><small>(<span id="res-loss-cost-try"></span> ₺)</small></div>
+                            </li>
+                            <li>
+                                <span>TOC (İletken + Kayıp Maliyeti):</span>
+                                <div><strong style="color: var(--accent-orange); font-size: 1.1rem;"><span id="res-toc"></span> USD</strong> <br><small>(<span id="res-toc-try"></span> ₺)</small></div>
+                            </li>
+                            <li>
+                                <span>Nüve Malzemesi ve Ağırlığı:</span>
+                                <div><strong id="res-core-type"></strong> (<span id="res-core-weight"></span> Kg)</div>
+                            </li>
+                        </ul>
+                    </div>
+                    
                     <div class="action-buttons">
                         <button id="btn-reset" class="action-btn action-btn-secondary" type="button">
                             🔄 Başlangıca Dön
