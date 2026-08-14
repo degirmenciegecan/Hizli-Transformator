@@ -704,6 +704,10 @@ body {
         border-bottom: 1px solid var(--border);
     }
     
+    .sidebar.collapsed {
+        display: none !important;
+    }
+    
     .results-grid {
         grid-template-columns: 1fr;
     }
