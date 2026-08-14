@@ -235,6 +235,7 @@ def calculate():
                 "copper": r2(prices.get("copper_usd_kg", 0)),
                 "aluminum": r2(prices.get("aluminum_usd_kg", 0))
             },
+            "sources": sources,
             "weights": {
                 "hv": r2(weight_hv),
                 "lv": r2(weight_lv),
