@@ -325,11 +325,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnDownloadPdf = document.getElementById('btn-download-pdf');
     if (btnDownloadPdf) {
         btnDownloadPdf.addEventListener('click', () => {
-            const pdfTemplate = document.getElementById('pdf-template');
-            if (!pdfTemplate) return;
+            const pdfSource = document.getElementById('pdf-export-wrapper');
+            if (!pdfSource) { alert('PDF şablonu bulunamadı.'); return; }
 
-            // Temporarily make it visible for rendering
-            pdfTemplate.style.display = 'block';
+            // Make visible for html2canvas capture
+            pdfSource.style.display = 'block';
+            pdfSource.style.position = 'absolute';
+            pdfSource.style.left = '-9999px';
 
             const opt = {
                 margin:       [10, 10, 10, 10],
@@ -339,13 +341,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(pdfTemplate).outputPdf('blob').then(function(blob) {
-                pdfTemplate.style.display = 'none';
+            html2pdf().set(opt).from(pdfSource).outputPdf('blob').then(function(blob) {
+                pdfSource.style.display = '';
+                pdfSource.style.position = '';
+                pdfSource.style.left = '';
                 const url = URL.createObjectURL(blob);
                 window.open(url, '_blank');
             }).catch(function(err) {
-                pdfTemplate.style.display = 'none';
-                console.error('PDF oluşturma hatası:', err);
+                pdfSource.style.display = '';
+                pdfSource.style.position = '';
+                pdfSource.style.left = '';
+                console.error('PDF hatası:', err);
                 alert('PDF oluşturulamadı: ' + err.message);
             });
         });
