@@ -712,6 +712,30 @@ body {
         grid-template-columns: 1fr;
     }
     
+    /* Faz 1: Mobil UI Düzeltmeleri */
+    .mechanical-tank-container {
+        width: 100%;
+        height: 220px; /* Reduced height for scaled drawing */
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 10px;
+    }
+    
+    .mech-transformer {
+        transform: scale(0.55);
+        transform-origin: top center;
+    }
+    
+    .corner-data {
+        display: none !important;
+    }
+    
+    .cost-grid {
+        flex-direction: column;
+    }
+    
     .action-buttons {
         flex-direction: column;
         align-items: center;

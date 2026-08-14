@@ -16,8 +16,13 @@
                 <button id="toggle-sidebar" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-primary); margin-right: 10px; display: flex; align-items: center;" title="Menüyü Gizle/Göster">☰</button>
                 <div class="icon">⚡</div>
                 <h1>Hızlı Transformatör</h1>
+                <button id="theme-toggle" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; margin-left: 15px; border-radius: 50%; padding: 5px;" title="Gece/Gündüz Modu">🌙</button>
             </div>
             <div class="live-prices" id="live-prices">
+                <div class="price-widget">
+                    <span class="label">Dolar Kuru</span>
+                    <span class="value" id="try-price">Yükleniyor...</span>
+                </div>
                 <div class="price-widget">
                     <span class="label">Bakır (USD/kg)</span>
                     <span class="value" id="cu-price">Yükleniyor...</span>
@@ -228,17 +233,17 @@
                             <div class="cost-item">
                                 <h4 id="cost-title-hv">Primer Sargı (H.V)</h4>
                                 <div class="weight"><span id="res-hv-weight"></span> kg</div>
-                                <div class="cost"><span id="res-hv-cost"></span> USD</div>
+                                <div class="cost"><span id="res-hv-cost"></span> USD <br><small style="color:var(--text-muted);">(<span id="res-hv-cost-try"></span> ₺)</small></div>
                             </div>
                             <div class="cost-item">
                                 <h4 id="cost-title-lv">Sekonder Sargı (L.V)</h4>
                                 <div class="weight"><span id="res-lv-weight"></span> kg</div>
-                                <div class="cost"><span id="res-lv-cost"></span> USD</div>
+                                <div class="cost"><span id="res-lv-cost"></span> USD <br><small style="color:var(--text-muted);">(<span id="res-lv-cost-try"></span> ₺)</small></div>
                             </div>
                             <div class="cost-item">
                                 <h4>Toplam İletken</h4>
                                 <div class="weight"><span id="res-total-weight"></span> kg</div>
-                                <div class="cost"><span id="res-total-cost"></span> USD</div>
+                                <div class="cost"><span id="res-total-cost"></span> USD <br><small style="color:var(--text-muted);">(<span id="res-total-cost-try"></span> ₺)</small></div>
                             </div>
                         </div>
                     </div>

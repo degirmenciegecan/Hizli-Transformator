@@ -10,8 +10,18 @@ def get_metal_prices():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
-    prices = {"copper_usd_kg": 9.50, "aluminum_usd_kg": 2.50}
-    sources = {"copper": "", "aluminum": ""}
+    prices = {"copper_usd_kg": 9.50, "aluminum_usd_kg": 2.50, "usd_try": 33.50}
+    sources = {"copper": "", "aluminum": "", "usd_try": ""}
+    
+    try:
+        url_try = "https://query1.finance.yahoo.com/v8/finance/chart/TRY=X"
+        response_try = requests.get(url_try, headers=headers, timeout=5)
+        if response_try.status_code == 200:
+            data_try = response_try.json()
+            prices["usd_try"] = data_try['chart']['result'][0]['meta']['regularMarketPrice']
+            sources["usd_try"] = url_try
+    except Exception:
+        pass
     
     try:
         url_cu = "https://query1.finance.yahoo.com/v8/finance/chart/HG=F"
@@ -48,7 +58,8 @@ def get_prices():
         "success": True,
         "prices": {
             "copper": round(prices.get("copper_usd_kg", 0), 2),
-            "aluminum": round(prices.get("aluminum_usd_kg", 0), 2)
+            "aluminum": round(prices.get("aluminum_usd_kg", 0), 2),
+            "usd_try": round(prices.get("usd_try", 33.50), 2)
         },
         "sources": sources
     })

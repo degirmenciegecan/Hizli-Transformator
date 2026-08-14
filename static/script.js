@@ -1,5 +1,6 @@
 // Add variable to store latest data for tooltips
 let latestData = null;
+let usdTryRate = 34.00; // Fallback rate
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('calc-form');
@@ -8,6 +9,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialDiv = document.getElementById('initial-state');
     const sidebar = document.querySelector('.sidebar');
     const parallaxContent = document.getElementById('parallax-content');
+    
+    // Theme toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeToggle.textContent = '☀️';
+    }
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        if (document.body.classList.contains('dark-mode')) {
+            localStorage.setItem('theme', 'dark');
+            themeToggle.textContent = '☀️';
+        } else {
+            localStorage.setItem('theme', 'light');
+            themeToggle.textContent = '🌙';
+        }
+    });
 
     // Fetch live prices on load
     fetch('/api/prices')
@@ -16,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.success) {
                 document.getElementById('cu-price').textContent = res.prices.copper + ' $/kg';
                 document.getElementById('al-price').textContent = res.prices.aluminum + ' $/kg';
+                document.getElementById('try-price').textContent = res.prices.usd_try + ' ₺';
+                usdTryRate = res.prices.usd_try || 34.00;
+                
                 if (res.sources.copper) document.getElementById('cu-source').href = res.sources.copper;
                 if (res.sources.aluminum) document.getElementById('al-source').href = res.sources.aluminum;
             }
@@ -155,9 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Format money nicely for cost results
                 const moneyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+                const tryFormatter = new Intl.NumberFormat('tr-TR');
+                
                 document.getElementById('res-hv-cost').textContent = moneyFormatter.format(res.cost.total.hv);
                 document.getElementById('res-lv-cost').textContent = moneyFormatter.format(res.cost.total.lv);
                 document.getElementById('res-total-cost').textContent = moneyFormatter.format(res.cost.total.total_cost);
+                
+                document.getElementById('res-hv-cost-try').textContent = tryFormatter.format(res.cost.total.hv * usdTryRate);
+                document.getElementById('res-lv-cost-try').textContent = tryFormatter.format(res.cost.total.lv * usdTryRate);
+                document.getElementById('res-total-cost-try').textContent = tryFormatter.format(res.cost.total.total_cost * usdTryRate);
 
                 // --- POPULATE HIDDEN PDF TEMPLATE ---
                 document.getElementById('pdf-I1').textContent = res.electrical.I1 + ' A';
