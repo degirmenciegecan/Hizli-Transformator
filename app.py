@@ -281,6 +281,12 @@ def calculate():
             "electrical": electrical,
             "thermo": thermo,
             "cost": cost,
+            "prices": {
+                "copper": r2(prices.get("copper_usd_kg", 0)),
+                "aluminum": r2(prices.get("aluminum_usd_kg", 0)),
+                "usd_try": prices.get("usd_try", 34.00)
+            },
+            "sources": sources,
             "toc_analysis": toc_analysis
         })
         

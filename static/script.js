@@ -2,6 +2,12 @@
 let latestData = null;
 let usdTryRate = 34.00; // Fallback rate
 
+// Helper: safely set text content (won't crash if element doesn't exist)
+function updateText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('calc-form');
     const resultsDiv = document.getElementById('results');
@@ -34,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.success) {
                 document.getElementById('cu-price').textContent = res.prices.copper + ' $/kg';
                 document.getElementById('al-price').textContent = res.prices.aluminum + ' $/kg';
-                document.getElementById('try-price').textContent = res.prices.usd_try + ' ₺';
                 usdTryRate = res.prices.usd_try || 34.00;
                 
                 if (res.sources.copper) document.getElementById('cu-source').href = res.sources.copper;
@@ -195,13 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('pdf-a').textContent = res.electrical.a;
                 document.getElementById('pdf-Vk').textContent = res.electrical.Vk + ' V';
                 document.getElementById('pdf-Zk').textContent = res.electrical.Zk + ' Ω';
-                document.getElementById('pdf-Lk').textContent = res.electrical.Lk + ' mH';
-                document.getElementById('pdf-eff').textContent = res.electrical.efficiency_percent + ' %';
+                document.getElementById('pdf-Lk').textContent = res.electrical.Lk_mH + ' mH';
+                document.getElementById('pdf-eff').textContent = res.electrical.efficiency + ' %';
 
                 document.getElementById('pdf-hv-turns').textContent = res.electrical.N1;
-                document.getElementById('pdf-hv-area').textContent = res.electrical.Ahv;
+                document.getElementById('pdf-hv-area').textContent = res.electrical.A1;
                 document.getElementById('pdf-lv-turns').textContent = res.electrical.N2;
-                document.getElementById('pdf-lv-area').textContent = res.electrical.Alv;
+                document.getElementById('pdf-lv-area').textContent = res.electrical.A2;
                 document.getElementById('pdf-et-val').textContent = res.electrical.Et;
                 document.getElementById('pdf-dry-weight').textContent = res.cost.weights.dry;
                 document.getElementById('pdf-wet-weight').textContent = res.cost.weights.wet;
@@ -215,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 document.getElementById('pdf-hv-weight').textContent = res.cost.weights.hv + ' kg';
                 document.getElementById('pdf-lv-weight').textContent = res.cost.weights.lv + ' kg';
-                document.getElementById('pdf-total-weight').textContent = res.cost.weights.total_conductor + ' kg';
+                document.getElementById('pdf-total-weight').textContent = res.cost.weights.total + ' kg';
                 
                 document.getElementById('pdf-hv-cost').textContent = moneyFormatter.format(res.cost.total.hv);
                 document.getElementById('pdf-lv-cost').textContent = moneyFormatter.format(res.cost.total.lv);
@@ -253,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Sunucuya bağlanılamadı. Flask uygulamasının arka planda çalıştığından emin olun.');
+            alert('Hata detayı: ' + error.message + '\n\nEğer bu hatayı görüyorsanız arka planda hesaplama motoru çökmüş veya JS hatası oluşmuş demektir.');
             loadingDiv.classList.add('hidden');
             initialDiv.classList.remove('hidden');
         }
