@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚡ Hızlı Transformatör</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.1">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- html2pdf for client side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -16,7 +16,7 @@
                 <button id="toggle-sidebar" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-primary); margin-right: 10px; display: flex; align-items: center;" title="Menüyü Gizle/Göster">☰</button>
                 <div class="icon">⚡</div>
                 <h1>Hızlı Transformatör</h1>
-                <button id="theme-toggle" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; margin-left: 15px; border-radius: 50%; padding: 5px;" title="Gece/Gündüz Modu">🌙</button>
+                <button id="theme-toggle" style="background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-left: 15px; border-radius: 20px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; color: var(--text-primary); transition: all 0.2s;" title="Gece/Gündüz Modu">Gece Modu 🌙</button>
             </div>
             <div class="live-prices" id="live-prices">
                 <div class="price-widget">
@@ -342,6 +342,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=2.1"></script>
 </body>
 </html>

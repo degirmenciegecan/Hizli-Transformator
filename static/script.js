@@ -14,16 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
-        themeToggle.textContent = '☀️';
+        themeToggle.innerHTML = 'Gündüz Modu ☀️';
     }
     themeToggle.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
         if (document.body.classList.contains('dark-mode')) {
             localStorage.setItem('theme', 'dark');
-            themeToggle.textContent = '☀️';
+            themeToggle.innerHTML = 'Gündüz Modu ☀️';
         } else {
             localStorage.setItem('theme', 'light');
-            themeToggle.textContent = '🌙';
+            themeToggle.innerHTML = 'Gece Modu 🌙';
         }
     });
 
