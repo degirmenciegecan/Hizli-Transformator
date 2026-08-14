@@ -699,6 +699,14 @@ body {
         width: 100%;
     }
     
+    .results-area {
+        padding: var(--space-3);
+    }
+    
+    .card {
+        padding: var(--space-3);
+    }
+    
     .sidebar {
         border-right: none;
         border-bottom: 1px solid var(--border);
