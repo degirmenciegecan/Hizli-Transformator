@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚡ Hızlı Transformatör</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- html2pdf for client side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -259,7 +259,7 @@
                 
                 <div id="initial-state" class="initial-state">
                     <div id="parallax-content">
-                        <img src="{{ url_for('static', filename='transformer-icon.png') }}" alt="Transformer Icon" style="max-width: 180px; margin-bottom: 20px;">
+                        <img src="{{ url_for('static', filename='transformer-icon.png') }}?v=2.0" alt="Transformer Icon" style="max-width: 180px; margin-bottom: 20px;">
                         <h2>Analize Başlamak İçin Bekleniyor</h2>
                         <p>Lütfen soldaki formdan trafo etiket değerlerini girin ve hesapla butonuna tıklayın.</p>
                     </div>
@@ -341,6 +341,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=2.0"></script>
 </body>
 </html>
