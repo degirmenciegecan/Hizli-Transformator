@@ -20,6 +20,19 @@
     --radius: 12px; /* Increased border radius */
 }
 
+body.dark-mode {
+    --bg-base: #111827;
+    --bg-surface: #1f2937;
+    --bg-elevated: #374151;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --accent-blue: #60a5fa;
+    --accent-blue-hover: #3b82f6;
+    --border: #4b5563;
+    --border-hover: #6b7280;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -689,8 +702,22 @@ body {
     }
     
     .logo {
+        position: relative;
+        width: 100%;
         flex-wrap: wrap;
         justify-content: center;
+    }
+    
+    #toggle-sidebar {
+        position: absolute;
+        left: 10px;
+        top: 5px;
+    }
+    
+    /* Ensure the theme toggle drops below if needed, but keep it centered */
+    #theme-toggle {
+        margin-top: 10px;
+        margin-left: 0;
     }
     
     .main-content {
