@@ -321,11 +321,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // PDF Download logic - using native robust print
+    // PDF Download logic - generate and open in new tab
     const btnDownloadPdf = document.getElementById('btn-download-pdf');
     if (btnDownloadPdf) {
         btnDownloadPdf.addEventListener('click', () => {
-            window.print();
+            const pdfTemplate = document.getElementById('pdf-template');
+            if (!pdfTemplate) return;
+
+            // Temporarily make it visible for rendering
+            pdfTemplate.style.display = 'block';
+
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     'Transformator_Raporu.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(pdfTemplate).outputPdf('blob').then(function(blob) {
+                pdfTemplate.style.display = 'none';
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            }).catch(function(err) {
+                pdfTemplate.style.display = 'none';
+                console.error('PDF oluşturma hatası:', err);
+                alert('PDF oluşturulamadı: ' + err.message);
+            });
         });
     }
 
