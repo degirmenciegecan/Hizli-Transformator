@@ -1,461 +1,622 @@
-// Add variable to store latest data for tooltips
+// ⚡ Hızlı Transformatör - Frontend Controller & Multi-Module Categorized UI Binder
 let latestData = null;
-let usdTryRate = 34.00; // Fallback rate
+let usdTryRate = 34.00;
 
-// Helper: safely set text content (won't crash if element doesn't exist)
 function updateText(id, value) {
     const el = document.getElementById(id);
-    if (el) el.textContent = value;
+    if (el) {
+        el.textContent = (value !== undefined && value !== null && value !== '') ? value : '—';
+    }
+}
+
+function getVal(id, fallback = 0) {
+    const el = document.getElementById(id);
+    if (!el || el.value === undefined || el.value === '') return fallback;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? fallback : v;
+}
+
+function getStr(id, fallback = '') {
+    const el = document.getElementById(id);
+    return (el && el.value) ? el.value : fallback;
+}
+
+window.doCalculate = doCalculate;
+
+async function doCalculate(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const resultsDiv = document.getElementById('results');
+    const loadingDiv = document.getElementById('loading');
+    const initialDiv = document.getElementById('initial-state');
+
+    console.log('⚡ doCalculate tetiklendi!');
+
+    // UI state transition
+    if (initialDiv) initialDiv.classList.add('hidden');
+    if (resultsDiv) resultsDiv.classList.add('hidden');
+    if (loadingDiv) loadingDiv.classList.remove('hidden');
+
+    const data = {
+        S: getVal('S', 50000),
+        V1: getVal('V1', 34500),
+        V2: getVal('V2', 400),
+        uk: getVal('uk', 4.5),
+        P0: getVal('P0', 150),
+        Pk: getVal('Pk', 900),
+        phase: parseInt(getStr('phase', '3')),
+        frequency: getVal('frequency', 50),
+        material_hv: getStr('material_hv', 'Cu'),
+        material_lv: getStr('material_lv', 'Cu'),
+        core_material: getStr('core_material', 'M4'),
+        oil_type: getStr('oil_type', 'mineral'),
+        k_constant: getVal('k_constant', 0.45),
+        delta_T: getVal('delta_T', 60),
+        ambient_temp: getVal('ambient_temp', 30),
+        cooling_method: getStr('cooling_method', 'ONAN'),
+        A_factor: getVal('A_factor', 8.0),
+        B_factor: getVal('B_factor', 2.0)
+    };
+
+    console.log('Gönderilen Parametreler:', data);
+
+    try {
+        const response = await fetch('/api/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const res = await response.json();
+        console.log('API Yanıtı:', res);
+
+        if (res && res.success) {
+            latestData = { req: data, res: res };
+
+            // Formatters
+            const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+            const fmtTRY = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            // --- KATEGORİ 1: Elektriksel Analiz ---
+            const el = res.electrical || {};
+            updateText('res-I1', el.I1);
+            updateText('res-I2', el.I2);
+            updateText('res-a', el.a);
+            updateText('res-Vk', el.Vk);
+            updateText('res-Zk', el.Zk);
+            updateText('res-Rk', el.Rk);
+            updateText('res-Xk', el.Xk);
+            updateText('res-Lk', el.Lk_mH);
+            updateText('res-ur', el.ur_pct);
+            updateText('res-ux', el.ux_pct);
+            updateText('res-eff', el.efficiency);
+
+            // Gerilim Regülasyonu
+            const vr = res.voltage_regulation || {};
+            updateText('res-vreg-08', el.voltage_reg_08 || (vr.regulation_table?.[2]?.regulation_pct));
+            updateText('res-max-reg-cos', vr.max_reg_cos_phi);
+
+            const tbodyVreg = document.getElementById('tbody-vreg');
+            if (tbodyVreg && vr.regulation_table) {
+                tbodyVreg.innerHTML = '';
+                vr.regulation_table.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>cosφ = ${row.cos_phi.toFixed(2)}</td>
+                        <td><strong>% ${row.regulation_pct}</strong></td>
+                        <td>${row.V2_loaded} V</td>
+                    `;
+                    tbodyVreg.appendChild(tr);
+                });
+            }
+
+            // Mıknatıslanma & Inrush
+            const mag = res.magnetization || {};
+            updateText('res-mag-ic', mag.Ic_A);
+            updateText('res-mag-im', mag.Im_A);
+            updateText('res-mag-i0', mag.I0_A);
+            updateText('res-mag-i0pct', mag.I0_pct);
+            updateText('res-mag-cos0', mag.cos_phi_0);
+            updateText('res-mag-inrush', mag.inrush_peak_A);
+
+            // --- KATEGORİ 2: İmalat & Manyetik Tasarım ---
+            const cd = res.core_design || {};
+            updateText('res-core-label', cd.core_label);
+            updateText('res-core-bm', cd.Bm);
+            updateText('res-core-ai', cd.Ai_cm2);
+            updateText('res-core-ag', cd.Ag_cm2);
+            updateText('res-core-dia', cd.core_diameter_mm);
+            updateText('res-core-weight-detail', cd.core_weight_kg);
+            updateText('res-core-p0-est', cd.P0_estimated_W);
+            updateText('res-core-physt', cd.P_hysteresis_W);
+            updateText('res-core-peddy', cd.P_eddy_W);
+            updateText('res-core-stack', cd.stacking_factor);
+
+            // Sargı & İmalat
+            const wd = res.winding || {};
+            updateText('res-et-val', el.Et);
+            updateText('res-hv-turns', el.N1);
+            updateText('res-lv-turns', el.N2);
+            updateText('res-hv-area', el.A1);
+            updateText('res-lv-area', el.A2);
+            updateText('res-hv-dia', wd.d_conductor_hv_mm);
+            updateText('res-lv-dia', wd.d_conductor_lv_mm);
+            updateText('res-par-hv', wd.n_parallel_hv);
+            updateText('res-par-lv', wd.n_parallel_lv);
+            updateText('res-mlt-hv', wd.MLT_hv_mm);
+            updateText('res-mlt-lv', wd.MLT_lv_mm);
+            updateText('res-r75-hv', wd.R_hv_75);
+            updateText('res-r75-lv', wd.R_lv_75);
+            updateText('res-len-hv', wd.total_conductor_length_hv_m);
+            updateText('res-len-lv', wd.total_conductor_length_lv_m);
+
+            // Yalıtım (BIL)
+            const ins = res.insulation || {};
+            updateText('res-ins-um1', ins.hv_Um_kV);
+            updateText('res-ins-bil1', ins.hv_BIL_kVp);
+            updateText('res-ins-ac1', ins.hv_AC_test_kV);
+            updateText('res-ins-creep1', ins.hv_creepage_mm);
+            updateText('res-ins-um2', ins.lv_Um_kV);
+            updateText('res-ins-ac2', ins.lv_AC_test_kV);
+            updateText('res-ins-oil1', ins.oil_clearance_hv_mm);
+
+            // --- KATEGORİ 3: Termodinamik & Güvenlik ---
+            const th = res.thermal || res.thermo || {};
+            updateText('res-total-heat', th.total_heat_loss_W || th.total_heat_loss);
+            updateText('res-cooling-area', th.cooling_area_m2);
+            updateText('res-oil-vol', th.oil_volume_L);
+            updateText('res-oil-weight', th.oil_weight_kg);
+            updateText('res-exp-vol', th.expansion_volume_L);
+            updateText('res-top-oil-rise', th.top_oil_rise_C);
+            updateText('res-hotspot', th.hot_spot_temp_C);
+            updateText('res-thermal-tau', th.thermal_time_constant_h);
+            updateText('res-conservator', th.conservator_volume_L);
+            updateText('res-cooling-rec', th.recommended_cooling || 'ONAN');
+
+            const hotspotBox = document.getElementById('res-hotspot-box');
+            if (hotspotBox) {
+                if (th.hot_spot_warning) {
+                    hotspotBox.style.color = '#EF4444';
+                    hotspotBox.title = 'Uyarı: Sıcak nokta 98°C IEC sınırının üzerindedir!';
+                } else {
+                    hotspotBox.style.color = 'var(--text-primary)';
+                }
+            }
+
+            // Kısa Devre & Kuvvetler
+            const sc = res.short_circuit || {};
+            updateText('res-sc-isc1', sc.Isc_A);
+            updateText('res-sc-isc2', sc.Isc2_A);
+            updateText('res-sc-ipeak1', sc.Ipeak_A);
+            updateText('res-sc-ipeak2', sc.Ipeak2_A);
+            updateText('res-sc-xr', sc.xr_ratio);
+            updateText('res-sc-k', sc.K_asymmetry);
+            updateText('res-sc-faxial', sc.F_axial_N ? Number(sc.F_axial_N).toLocaleString('tr-TR') : '—');
+            updateText('res-sc-fradial', sc.F_radial_N ? Number(sc.F_radial_N).toLocaleString('tr-TR') : '—');
+
+            // --- KATEGORİ 4: Gelişmiş Verim & Yük Matrisi ---
+            const ls = res.losses || {};
+            updateText('res-max-eff-load', ls.max_eff_load ? (ls.max_eff_load * 100).toFixed(1) : '—');
+            updateText('res-max-eff-val', ls.max_eff_value);
+            updateText('res-annual-loss', ls.annual_loss_kWh ? Math.round(ls.annual_loss_kWh).toLocaleString('tr-TR') : '—');
+            updateText('res-annual-co2', ls.co2_kg_year ? Math.round(ls.co2_kg_year).toLocaleString('tr-TR') : '—');
+
+            const tbodyEff = document.getElementById('tbody-efficiency');
+            if (tbodyEff && ls.efficiency_table) {
+                tbodyEff.innerHTML = '';
+                ls.efficiency_table.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>%${Math.round(row.load * 100)} Yük (${(row.load * (data.S/1000)).toFixed(1)} kVA)</strong></td>
+                        <td><strong>% ${row['cos_1.0'] || '—'}</strong></td>
+                        <td>% ${row['cos_0.9'] || '—'}</td>
+                        <td>% ${row['cos_0.8'] || '—'}</td>
+                    `;
+                    tbodyEff.appendChild(tr);
+                });
+            }
+
+            // --- KATEGORİ 5: Maliyet, TOC & LCC ---
+            const cost = res.cost || {};
+            const eco = res.economic || {};
+
+            const totalCostUSD = cost.total?.total_cost || 0;
+            const lossCostUSD = eco.loss_cost_usd || res.toc_analysis?.loss_cost || 0;
+            const tocUSD = eco.toc_usd || res.toc_analysis?.toc || 0;
+            const lccUSD = eco.lcc_usd || 0;
+
+            updateText('res-total-cost', fmtUSD.format(totalCostUSD));
+            updateText('res-total-cost-try', fmtTRY.format(totalCostUSD * usdTryRate));
+            updateText('res-loss-cost', fmtUSD.format(lossCostUSD));
+            updateText('res-loss-cost-try', fmtTRY.format(lossCostUSD * usdTryRate));
+            updateText('res-toc', fmtUSD.format(tocUSD));
+            updateText('res-toc-try', fmtTRY.format(tocUSD * usdTryRate));
+            updateText('res-lcc', fmtUSD.format(lccUSD));
+
+            updateText('res-hv-weight', cost.weights?.hv);
+            updateText('res-hv-cost', fmtUSD.format(cost.total?.hv || 0));
+            updateText('res-hv-cost-try', fmtTRY.format((cost.total?.hv || 0) * usdTryRate));
+
+            updateText('res-lv-weight', cost.weights?.lv);
+            updateText('res-lv-cost', fmtUSD.format(cost.total?.lv || 0));
+            updateText('res-lv-cost-try', fmtTRY.format((cost.total?.lv || 0) * usdTryRate));
+
+            updateText('res-core-weight', cost.weights?.core_weight || cd.core_weight_kg);
+            updateText('res-tank-weight', cost.weights?.tank_weight || th.tank_weight_kg);
+            updateText('res-dry-weight', cost.weights?.dry || th.dry_weight_kg);
+            updateText('res-wet-weight', cost.weights?.wet || th.wet_weight_kg);
+            updateText('res-annual-cost', fmtUSD.format(eco.annual_operating_cost_usd || 0));
+
+            // --- Populate PDF Hidden Template ---
+            updateText('pdf-I1', el.I1 + ' A');
+            updateText('pdf-I2', el.I2 + ' A');
+            updateText('pdf-a', el.a);
+            updateText('pdf-Vk', el.Vk + ' V');
+            updateText('pdf-Zk', el.Zk + ' Ω');
+            updateText('pdf-Rk', el.Rk + ' Ω');
+            updateText('pdf-Xk', el.Xk + ' Ω');
+            updateText('pdf-Lk', el.Lk_mH + ' mH');
+            updateText('pdf-ur', el.ur_pct + ' %');
+            updateText('pdf-eff', el.efficiency + ' %');
+
+            updateText('pdf-core-label', cd.core_label);
+            updateText('pdf-core-bm', cd.Bm + ' T');
+            updateText('pdf-core-ai', cd.Ai_cm2 + ' cm²');
+            updateText('pdf-core-dia', cd.core_diameter_mm + ' mm');
+            updateText('pdf-core-weight', cd.core_weight_kg + ' kg');
+            updateText('pdf-core-p0', cd.P0_estimated_W + ' W');
+
+            updateText('pdf-hv-turns', el.N1);
+            updateText('pdf-hv-area', el.A1);
+            updateText('pdf-lv-turns', el.N2);
+            updateText('pdf-lv-area', el.A2);
+            updateText('pdf-ins-bil1', ins.hv_BIL_kVp + ' kVp');
+            updateText('pdf-ins-ac1', ins.hv_AC_test_kV + ' kV');
+            updateText('pdf-total-cond-weight', cost.weights?.total + ' kg');
+            updateText('pdf-dry-weight', cost.weights?.dry);
+            updateText('pdf-wet-weight', cost.weights?.wet);
+
+            updateText('pdf-oil-vol', th.oil_volume_L);
+            updateText('pdf-exp-vol', th.expansion_volume_L);
+            updateText('pdf-top-oil', th.top_oil_rise_C);
+            updateText('pdf-hotspot', th.hot_spot_temp_C);
+            updateText('pdf-sc-isc', sc.Isc_A + ' A');
+            updateText('pdf-sc-ipeak', sc.Ipeak_A + ' A');
+            updateText('pdf-sc-faxial', sc.F_axial_N + ' N');
+            updateText('pdf-sc-fradial', sc.F_radial_N + ' N');
+
+            updateText('pdf-total-cost', fmtUSD.format(totalCostUSD));
+            updateText('pdf-loss-cost', fmtUSD.format(lossCostUSD));
+            updateText('pdf-toc', fmtUSD.format(tocUSD));
+            updateText('pdf-lcc', fmtUSD.format(lccUSD));
+
+            // Switch UI states
+            if (loadingDiv) loadingDiv.classList.add('hidden');
+            if (resultsDiv) resultsDiv.classList.remove('hidden');
+
+            // Reset tabs to 'all'
+            const catTabs = document.querySelectorAll('.cat-tab');
+            catTabs.forEach(t => t.classList.remove('active'));
+            catTabs[0]?.classList.add('active');
+            document.querySelectorAll('.category-group').forEach(g => g.style.display = '');
+
+        } else {
+            alert('Hesaplama motoru hatası: ' + (res?.error || 'Bilinmeyen hata'));
+            if (loadingDiv) loadingDiv.classList.add('hidden');
+            if (initialDiv) initialDiv.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        alert('Hata detayı: ' + err.message);
+        if (loadingDiv) loadingDiv.classList.add('hidden');
+        if (initialDiv) initialDiv.classList.remove('hidden');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('calc-form');
-    const resultsDiv = document.getElementById('results');
-    const loadingDiv = document.getElementById('loading');
-    const initialDiv = document.getElementById('initial-state');
+    const btnCalc = document.getElementById('btn-calc');
     const sidebar = document.querySelector('.sidebar');
-    const parallaxContent = document.getElementById('parallax-content');
-    
-    // Theme toggle
-    const themeToggle = document.getElementById('theme-toggle');
+    const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+
+    // 1. Theme Management
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
-        themeToggle.innerHTML = 'Gündüz Modu ☀️';
+        if (themeToggleBtn) themeToggleBtn.textContent = 'Aydınlık Mod';
     }
-    themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        if (document.body.classList.contains('dark-mode')) {
-            localStorage.setItem('theme', 'dark');
-            themeToggle.innerHTML = 'Gündüz Modu ☀️';
-        } else {
-            localStorage.setItem('theme', 'light');
-            themeToggle.innerHTML = 'Gece Modu 🌙';
-        }
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            themeToggleBtn.textContent = isDark ? 'Aydınlık Mod' : 'Karanlık Mod';
+        });
+    }
+
+    // 2. Sidebar Toggle
+    if (toggleSidebarBtn && sidebar) {
+        toggleSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+        });
+    }
+
+    // 3. Category Nav Smooth-Scroll & Highlight Pulse
+    const catTabs = document.querySelectorAll('.cat-tab');
+    catTabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = tab.getAttribute('data-target');
+            const targetGroup = document.getElementById(targetId);
+
+            if (targetGroup) {
+                catTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                targetGroup.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                targetGroup.classList.add('highlight-pulse');
+                setTimeout(() => targetGroup.classList.remove('highlight-pulse'), 1200);
+            }
+        });
     });
 
-    // Fetch live prices on load
-    fetch('/api/prices')
-        .then(response => response.json())
-        .then(res => {
-            if (res.success) {
-                document.getElementById('cu-price').textContent = res.prices.copper + ' $/kg';
-                document.getElementById('al-price').textContent = res.prices.aluminum + ' $/kg';
-                usdTryRate = res.prices.usd_try || 34.00;
-                
-                if (res.sources.copper) document.getElementById('cu-source').href = res.sources.copper;
-                if (res.sources.aluminum) document.getElementById('al-source').href = res.sources.aluminum;
-            }
-        })
-        .catch(console.error);
+    // 4. ScrollSpy with IntersectionObserver
+    const resultsArea = document.querySelector('.results-area');
+    const categoryGroups = document.querySelectorAll('.category-group');
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // UI State update
-        initialDiv.classList.add('hidden');
-        resultsDiv.classList.add('hidden');
-        loadingDiv.classList.remove('hidden');
+    if ('IntersectionObserver' in window && resultsArea) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    catTabs.forEach(tab => {
+                        if (tab.getAttribute('data-target') === id) {
+                            tab.classList.add('active');
+                        } else {
+                            tab.classList.remove('active');
+                        }
+                    });
+                }
+            });
+        }, {
+            root: resultsArea,
+            rootMargin: '-20px 0px -65% 0px',
+            threshold: 0.05
+        });
 
-        // Gather form data safely handling empty inputs
-        const data = {
-            S: document.getElementById('S').value ? parseFloat(document.getElementById('S').value) : null,
-            V1: document.getElementById('V1').value ? parseFloat(document.getElementById('V1').value) : null,
-            V2: document.getElementById('V2').value ? parseFloat(document.getElementById('V2').value) : null,
-            phase: parseInt(document.getElementById('phase').value),
-            frequency: document.getElementById('frequency').value ? parseFloat(document.getElementById('frequency').value) : 50.0,
-            uk: document.getElementById('uk').value ? parseFloat(document.getElementById('uk').value) : null,
-            P0: document.getElementById('P0').value ? parseFloat(document.getElementById('P0').value) : null,
-            Pk: document.getElementById('Pk').value ? parseFloat(document.getElementById('Pk').value) : null,
-            oil_type: document.getElementById('oil_type').value,
-            k_constant: parseFloat(document.getElementById('k_constant').value),
-            delta_T: parseFloat(document.getElementById('delta_T').value),
-            material_hv: document.getElementById('material_hv').value,
-            material_lv: document.getElementById('material_lv').value,
-            core_material: document.getElementById('core_material').value,
-            A_factor: document.getElementById('A_factor').value ? parseFloat(document.getElementById('A_factor').value) : null,
-            B_factor: document.getElementById('B_factor').value ? parseFloat(document.getElementById('B_factor').value) : null
-        };
+        categoryGroups.forEach(group => observer.observe(group));
+    }
+
+    // Real-time ticking digital clock (updates every second)
+    function updateLiveClock() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const liveTimeEl = document.getElementById('live-time');
+        if (liveTimeEl) {
+            liveTimeEl.textContent = `CANLI ${hours}:${minutes}:${seconds}`;
+        }
+    }
+    updateLiveClock();
+    setInterval(updateLiveClock, 1000);
+
+    // 4. Live Metal & Currency Market Tracker with Dynamic Recalculation (Every 30s)
+    async function fetchPrices(isManual = false) {
+        const btn = document.getElementById('btn-refresh-prices');
+        if (btn && isManual) btn.textContent = 'Güncelleniyor...';
 
         try {
-            const response = await fetch('/api/calculate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
+            const url = isManual ? '/api/prices?force=true' : '/api/prices';
+            const response = await fetch(url);
             const res = await response.json();
 
-            if (res.success) {
-                // Store globally for tooltips
-                latestData = { req: data, res: res };
+            if (res && res.success && res.prices) {
+                updateText('cu-price', res.prices.copper.toFixed(2) + ' $/kg');
+                updateText('al-price', res.prices.aluminum.toFixed(2) + ' $/kg');
+                updateText('usd-try-price', res.prices.usd_try.toFixed(2));
+                usdTryRate = res.prices.usd_try || 34.00;
 
-                // Populate visual diagram initial values
-                document.getElementById('vis-v1').textContent = data.V1 + " V";
-                document.getElementById('vis-v2').textContent = data.V2 + " V";
-                
-                const oilSelect = document.getElementById('oil_type');
-                const oilTypeName = oilSelect.options[oilSelect.selectedIndex].text.split(' (')[0];
-                document.getElementById('vis-oil-type').textContent = oilTypeName;
-                
-                document.getElementById('vis-oil-weight').textContent = Math.round(res.thermo.oil_weight_kg) + " Kg";
+                const cuSrc = document.getElementById('cu-source');
+                const alSrc = document.getElementById('al-source');
+                if (cuSrc && res.sources?.copper) cuSrc.href = res.sources.copper;
+                if (alSrc && res.sources?.aluminum) alSrc.href = res.sources.aluminum;
 
-                // Dynamic Width and Color based on Material
-                const leftCoil = document.querySelector('.left-coil');
-                const rightCoil = document.querySelector('.right-coil');
-                
-                // HV (Primary / Left)
-                if (data.material_hv === 'Al') {
-                    leftCoil.style.width = '65px';
-                    leftCoil.style.backgroundColor = '#b0bec5'; // Aluminum color
-                    leftCoil.querySelectorAll('.mech-wire-out').forEach(w => w.style.backgroundColor = '#b0bec5');
-                } else {
-                    leftCoil.style.width = '50px';
-                    leftCoil.style.backgroundColor = '#f26d21'; // Copper color
-                    leftCoil.querySelectorAll('.mech-wire-out').forEach(w => w.style.backgroundColor = '#f26d21');
-                }
-                
-                // LV (Secondary / Right)
-                if (data.material_lv === 'Al') {
-                    rightCoil.style.width = '65px';
-                    rightCoil.style.backgroundColor = '#b0bec5'; // Aluminum color
-                    rightCoil.querySelectorAll('.mech-wire-out').forEach(w => w.style.backgroundColor = '#b0bec5');
-                } else {
-                    rightCoil.style.width = '50px';
-                    rightCoil.style.backgroundColor = '#f26d21'; // Copper color
-                    rightCoil.querySelectorAll('.mech-wire-out').forEach(w => w.style.backgroundColor = '#f26d21');
-                }
+                // Live dynamic recalculation if results are currently visible
+                if (latestData && latestData.res && latestData.res.cost) {
+                    const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+                    const fmtTRY = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-                // Populate electrical results
-                document.getElementById('res-I1').textContent = res.electrical.I1;
-                document.getElementById('res-I2').textContent = res.electrical.I2;
-                document.getElementById('res-a').textContent = res.electrical.a;
-                document.getElementById('res-Vk').textContent = res.electrical.Vk;
-                document.getElementById('res-Zk').textContent = res.electrical.Zk;
-                document.getElementById('res-Lk').textContent = res.electrical.Lk_mH;
-                document.getElementById('res-eff').textContent = res.electrical.efficiency;
+                    const cuP = res.prices.copper;
+                    const alP = res.prices.aluminum;
+                    const req = latestData.req;
+                    const cost = latestData.res.cost;
+                    const eco = latestData.res.economic;
 
+                    const hvWeight = cost.weights?.hv || 0;
+                    const lvWeight = cost.weights?.lv || 0;
+                    const hvCostUSD = hvWeight * (req.material_hv === 'Cu' ? cuP : alP);
+                    const lvCostUSD = lvWeight * (req.material_lv === 'Cu' ? cuP : alP);
+                    const totalCostUSD = hvCostUSD + lvCostUSD;
+                    const lossCostUSD = eco?.loss_cost_usd || 0;
+                    const tocUSD = totalCostUSD + lossCostUSD;
+                    const lccLossDiff = (eco?.lcc_usd || 0) - (cost.total?.total_cost || 0);
+                    const lccUSD = totalCostUSD + (lccLossDiff > 0 ? lccLossDiff : 0);
 
+                    updateText('res-total-cost', fmtUSD.format(totalCostUSD));
+                    updateText('res-total-cost-try', fmtTRY.format(totalCostUSD * usdTryRate));
+                    updateText('res-loss-cost', fmtUSD.format(lossCostUSD));
+                    updateText('res-loss-cost-try', fmtTRY.format(lossCostUSD * usdTryRate));
+                    updateText('res-toc', fmtUSD.format(tocUSD));
+                    updateText('res-toc-try', fmtTRY.format(tocUSD * usdTryRate));
+                    updateText('res-lcc', fmtUSD.format(lccUSD));
 
-                // Update live prices in header
-                document.getElementById('cu-price').textContent = res.cost.prices.copper + ' $/kg';
-                document.getElementById('al-price').textContent = res.cost.prices.aluminum + ' $/kg';
-                
-                if (res.cost.sources.copper) {
-                    document.getElementById('cu-source').href = res.cost.sources.copper;
-                }
-                if (res.cost.sources.aluminum) {
-                    document.getElementById('al-source').href = res.cost.sources.aluminum;
-                }
+                    updateText('res-hv-cost', fmtUSD.format(hvCostUSD));
+                    updateText('res-hv-cost-try', fmtTRY.format(hvCostUSD * usdTryRate));
+                    updateText('res-lv-cost', fmtUSD.format(lvCostUSD));
+                    updateText('res-lv-cost-try', fmtTRY.format(lvCostUSD * usdTryRate));
 
-                // Populate costs
-                document.getElementById('cost-title-hv').textContent = 'Primer Sargı (' + (res.cost.materials.hv === 'Cu' ? 'Bakır' : 'Alüminyum') + ')';
-                document.getElementById('res-hv-weight').textContent = res.cost.weights.hv;
-                
-                document.getElementById('cost-title-lv').textContent = 'Sekonder Sargı (' + (res.cost.materials.lv === 'Cu' ? 'Bakır' : 'Alüminyum') + ')';
-                document.getElementById('res-lv-weight').textContent = res.cost.weights.lv;
-                
-                document.getElementById('res-total-weight').textContent = res.cost.weights.total;
-
-                // Populate Mfg
-                document.getElementById('mfg-title-hv').textContent = 'Primer Sargı (' + (res.cost.materials.hv === 'Cu' ? 'Bakır' : 'Alüminyum') + ')';
-                document.getElementById('res-hv-turns').textContent = res.electrical.N1;
-                document.getElementById('res-hv-area').textContent = res.electrical.A1;
-                
-                document.getElementById('mfg-title-lv').textContent = 'Sekonder Sargı (' + (res.cost.materials.lv === 'Cu' ? 'Bakır' : 'Alüminyum') + ')';
-                document.getElementById('res-lv-turns').textContent = res.electrical.N2;
-                document.getElementById('res-lv-area').textContent = res.electrical.A2;
-                
-                document.getElementById('res-et-val').textContent = res.electrical.Et;
-                document.getElementById('res-dry-weight').textContent = res.cost.weights.dry;
-                document.getElementById('res-wet-weight').textContent = res.cost.weights.wet;
-                
-                // Populate Thermo
-                document.getElementById('res-total-heat').textContent = res.thermo.total_heat_loss;
-                document.getElementById('res-cooling-area').textContent = res.thermo.cooling_area_m2;
-                document.getElementById('res-oil-vol').textContent = res.thermo.oil_volume_L;
-                document.getElementById('res-exp-vol').textContent = res.thermo.expansion_volume_L;
-                document.getElementById('res-oil-den').textContent = res.thermo.oil_density;
-                document.getElementById('res-oil-beta').textContent = res.thermo.expansion_coeff;
-
-                // Auto hide sidebar on mobile/smaller screens, or just close it to show results better
-                document.querySelector('.sidebar').classList.add('collapsed');
-
-                // Format money nicely for cost results
-                const moneyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-                const tryFormatter = new Intl.NumberFormat('tr-TR');
-                
-                document.getElementById('res-hv-cost').textContent = moneyFormatter.format(res.cost.total.hv);
-                document.getElementById('res-lv-cost').textContent = moneyFormatter.format(res.cost.total.lv);
-                document.getElementById('res-total-cost').textContent = moneyFormatter.format(res.cost.total.total_cost);
-                
-                document.getElementById('res-hv-cost-try').textContent = tryFormatter.format(res.cost.total.hv * usdTryRate);
-                document.getElementById('res-lv-cost-try').textContent = tryFormatter.format(res.cost.total.lv * usdTryRate);
-                document.getElementById('res-total-cost-try').textContent = tryFormatter.format(res.cost.total.total_cost * usdTryRate);
-
-                // --- POPULATE HIDDEN PDF TEMPLATE ---
-                document.getElementById('pdf-I1').textContent = res.electrical.I1 + ' A';
-                document.getElementById('pdf-I2').textContent = res.electrical.I2 + ' A';
-                document.getElementById('pdf-a').textContent = res.electrical.a;
-                document.getElementById('pdf-Vk').textContent = res.electrical.Vk + ' V';
-                document.getElementById('pdf-Zk').textContent = res.electrical.Zk + ' Ω';
-                document.getElementById('pdf-Lk').textContent = res.electrical.Lk_mH + ' mH';
-                document.getElementById('pdf-eff').textContent = res.electrical.efficiency + ' %';
-
-                document.getElementById('pdf-hv-turns').textContent = res.electrical.N1;
-                document.getElementById('pdf-hv-area').textContent = res.electrical.A1;
-                document.getElementById('pdf-lv-turns').textContent = res.electrical.N2;
-                document.getElementById('pdf-lv-area').textContent = res.electrical.A2;
-                document.getElementById('pdf-et-val').textContent = res.electrical.Et;
-                document.getElementById('pdf-dry-weight').textContent = res.cost.weights.dry;
-                document.getElementById('pdf-wet-weight').textContent = res.cost.weights.wet;
-
-                document.getElementById('pdf-total-heat').textContent = res.thermo.total_heat_loss + ' W';
-                document.getElementById('pdf-cooling-area').textContent = res.thermo.cooling_area_m2 + ' m²';
-                document.getElementById('pdf-oil-vol').textContent = res.thermo.oil_volume_L + ' Litre';
-                document.getElementById('pdf-exp-vol').textContent = '+' + res.thermo.expansion_volume_L + ' Litre';
-                document.getElementById('pdf-oil-den').textContent = res.thermo.oil_density + ' g/cm³';
-                document.getElementById('pdf-oil-beta').textContent = res.thermo.expansion_coeff;
-
-                document.getElementById('pdf-hv-weight').textContent = res.cost.weights.hv + ' kg';
-                document.getElementById('pdf-lv-weight').textContent = res.cost.weights.lv + ' kg';
-                document.getElementById('pdf-total-weight').textContent = res.cost.weights.total + ' kg';
-                
-                document.getElementById('pdf-hv-cost').textContent = moneyFormatter.format(res.cost.total.hv);
-                document.getElementById('pdf-lv-cost').textContent = moneyFormatter.format(res.cost.total.lv);
-                document.getElementById('pdf-total-cost').textContent = moneyFormatter.format(res.cost.total.total_cost);
-
-                // TOC Analizi Güncellemesi
-                if (res.toc_analysis) {
-                    updateText('res-loss-cost', res.toc_analysis.loss_cost);
-                    updateText('res-toc', res.toc_analysis.toc);
-                    updateText('res-core-type', res.toc_analysis.core_label);
-                    updateText('res-core-weight', res.toc_analysis.core_weight);
-                    
-                    if (res.toc_analysis.loss_cost !== "—" && usdTryRate) {
-                        const lossCostTry = res.toc_analysis.loss_cost * usdTryRate;
-                        updateText('res-loss-cost-try', lossCostTry.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                    } else {
-                        updateText('res-loss-cost-try', "—");
-                    }
-
-                    if (res.toc_analysis.toc !== "—" && usdTryRate) {
-                        const tocTry = res.toc_analysis.toc * usdTryRate;
-                        updateText('res-toc-try', tocTry.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                    } else {
-                        updateText('res-toc-try', "—");
+                    // Visual pulse flash on Category 5 Cost Card
+                    const costCard = document.querySelector('#cat-5 .card');
+                    if (costCard) {
+                        costCard.classList.remove('price-flash');
+                        void costCard.offsetWidth;
+                        costCard.classList.add('price-flash');
                     }
                 }
-
-                // Show results
-                loadingDiv.classList.add('hidden');
-                resultsDiv.classList.remove('hidden');
-            } else {
-                alert('Hesaplama sırasında hata oluştu: ' + res.error);
-                loadingDiv.classList.add('hidden');
-                initialDiv.classList.remove('hidden');
             }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Hata detayı: ' + error.message + '\n\nEğer bu hatayı görüyorsanız arka planda hesaplama motoru çökmüş veya JS hatası oluşmuş demektir.');
-            loadingDiv.classList.add('hidden');
-            initialDiv.classList.remove('hidden');
+        } catch (err) {
+            console.error('Piyasa verisi alınamadı:', err);
+        } finally {
+            if (btn && isManual) btn.textContent = 'Piyasayı Güncelle';
         }
-    });
-    
-    // PDF Upload logic
-    const pdfUpload = document.getElementById('pdf_upload');
+    }
+
+    // Initial fetch & 30-second live polling
+    fetchPrices(false);
+    setInterval(() => fetchPrices(false), 30000);
+
+    const btnRefreshPrices = document.getElementById('btn-refresh-prices');
+    if (btnRefreshPrices) {
+        btnRefreshPrices.addEventListener('click', () => fetchPrices(true));
+    }
+
+    // 5. PDF Specification Auto-Fill
+    const pdfUpload = document.getElementById('pdf-upload');
     const pdfStatus = document.getElementById('pdf-status');
     
     if (pdfUpload) {
         pdfUpload.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            
-            pdfStatus.textContent = 'PDF analiz ediliyor...';
-            pdfStatus.style.color = '#f26d21';
-            
+
+            if (pdfStatus) {
+                pdfStatus.textContent = 'Şartname analiz ediliyor...';
+                pdfStatus.style.color = 'var(--accent-blue)';
+            }
+
             const formData = new FormData();
             formData.append('file', file);
-            
+
             try {
                 const response = await fetch('/api/parse-pdf', {
                     method: 'POST',
                     body: formData
                 });
-                
                 const res = await response.json();
-                
-                if (res.success) {
-                    // Update fields, clear if missing to indicate lack of data from PDF
-                    document.getElementById('S').value = res.data.S || '';
-                    document.getElementById('V1').value = res.data.V1 || '';
-                    document.getElementById('V2').value = res.data.V2 || '';
+
+                if (res && res.success && res.data) {
+                    if (res.data.S) document.getElementById('S').value = res.data.S;
+                    if (res.data.V1) document.getElementById('V1').value = res.data.V1;
+                    if (res.data.V2) document.getElementById('V2').value = res.data.V2;
+                    if (res.data.uk) document.getElementById('uk').value = res.data.uk;
+                    if (res.data.P0) document.getElementById('P0').value = res.data.P0;
+                    if (res.data.Pk) document.getElementById('Pk').value = res.data.Pk;
                     if (res.data.phase) document.getElementById('phase').value = res.data.phase;
                     if (res.data.frequency) document.getElementById('frequency').value = res.data.frequency;
-                    document.getElementById('uk').value = res.data.uk || '';
-                    document.getElementById('P0').value = res.data.P0 || '';
-                    document.getElementById('Pk').value = res.data.Pk || '';
-                    
                     if (res.data.material_hv) document.getElementById('material_hv').value = res.data.material_hv;
                     if (res.data.material_lv) document.getElementById('material_lv').value = res.data.material_lv;
+
+                    if (pdfStatus) {
+                        pdfStatus.textContent = 'Şartname başarıyla ayrıştırıldı. Hesaplama başlatılıyor...';
+                        pdfStatus.style.color = 'var(--accent-green)';
+                    }
                     
-                    pdfStatus.textContent = '✅ Şartname başarıyla ayrıştırıldı. Hesaplama yapılıyor...';
-                    pdfStatus.style.color = '#38a169';
-                    
-                    // Auto submit form
-                    setTimeout(() => {
-                        document.getElementById('btn-calc').click();
-                    }, 500);
-                    
+                    setTimeout(() => doCalculate(), 300);
                 } else {
-                    pdfStatus.textContent = '❌ Hata: ' + res.error;
-                    pdfStatus.style.color = '#e53e3e';
+                    if (pdfStatus) {
+                        pdfStatus.textContent = 'Hata: ' + (res.error || 'Ayrıştırma başarısız');
+                        pdfStatus.style.color = '#EF4444';
+                    }
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                pdfStatus.textContent = '❌ Sunucu hatası.';
-                pdfStatus.style.color = '#e53e3e';
+            } catch (err) {
+                if (pdfStatus) {
+                    pdfStatus.textContent = 'Hata: Sunucu hatası';
+                    pdfStatus.style.color = '#EF4444';
+                }
             }
         });
     }
 
-    // PDF Download logic - generate and open in new tab
-    const btnDownloadPdf = document.getElementById('btn-download-pdf');
-    if (btnDownloadPdf) {
-        btnDownloadPdf.addEventListener('click', () => {
-            const pdfSource = document.getElementById('pdf-export-wrapper');
-            if (!pdfSource) { alert('PDF şablonu bulunamadı.'); return; }
-
-            // Make visible for html2canvas capture
-            pdfSource.style.display = 'block';
-            pdfSource.style.position = 'absolute';
-            pdfSource.style.left = '-9999px';
-
-            const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     'Transformator_Raporu.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(pdfSource).outputPdf('blob').then(function(blob) {
-                pdfSource.style.display = '';
-                pdfSource.style.position = '';
-                pdfSource.style.left = '';
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank');
-            }).catch(function(err) {
-                pdfSource.style.display = '';
-                pdfSource.style.position = '';
-                pdfSource.style.left = '';
-                console.error('PDF hatası:', err);
-                alert('PDF oluşturulamadı: ' + err.message);
-            });
+    // 6. Bind Calculation on Both Form Submit & Button Click
+    if (form) {
+        form.addEventListener('submit', doCalculate);
+    }
+    if (btnCalc) {
+        btnCalc.addEventListener('click', (e) => {
+            e.preventDefault();
+            doCalculate(e);
         });
     }
 
-    // Reset button logic
+    // 7. Reset Form
     const btnReset = document.getElementById('btn-reset');
     if (btnReset) {
         btnReset.addEventListener('click', () => {
-            document.getElementById('results').classList.add('hidden');
-            document.getElementById('initial-state').classList.remove('hidden');
-            
-            // Open sidebar if it was collapsed
-            const sidebarEl = document.querySelector('.sidebar');
-            if (sidebarEl) sidebarEl.classList.remove('collapsed');
+            const resultsDiv = document.getElementById('results');
+            const initialDiv = document.getElementById('initial-state');
+            if (resultsDiv) resultsDiv.classList.add('hidden');
+            if (initialDiv) initialDiv.classList.remove('hidden');
+            if (sidebar) sidebar.classList.remove('collapsed');
         });
     }
 
-    // Tooltip logic
-    const tooltip = document.getElementById('diagram-tooltip');
-    const leftCoil = document.querySelector('.left-coil');
-    const rightCoil = document.querySelector('.right-coil');
-    const mechTank = document.querySelector('.mechanical-tank-container');
-    
-    // Sidebar Toggle Logic
-    const toggleBtn = document.getElementById('toggle-sidebar');
-    if(toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
+    // 8. Server-Side Vector PDF Export in New Tab (ReportLab)
+    const btnDownloadPdf = document.getElementById('btn-download-pdf');
+    if (btnDownloadPdf) {
+        btnDownloadPdf.addEventListener('click', async () => {
+            const btn = document.getElementById('btn-download-pdf');
+            if (btn) btn.textContent = 'Rapor Hazırlanıyor...';
+
+            const data = {
+                S: getVal('S', 50000),
+                V1: getVal('V1', 34500),
+                V2: getVal('V2', 400),
+                uk: getVal('uk', 4.5),
+                P0: getVal('P0', 150),
+                Pk: getVal('Pk', 900),
+                phase: parseInt(getStr('phase', '3')),
+                frequency: getVal('frequency', 50),
+                material_hv: getStr('material_hv', 'Cu'),
+                material_lv: getStr('material_lv', 'Cu'),
+                core_material: getStr('core_material', 'M4'),
+                oil_type: getStr('oil_type', 'mineral'),
+                k_constant: getVal('k_constant', 0.45),
+                delta_T: getVal('delta_T', 60),
+                ambient_temp: getVal('ambient_temp', 30),
+                cooling_method: getStr('cooling_method', 'ONAN'),
+                A_factor: getVal('A_factor', 8.0),
+                B_factor: getVal('B_factor', 2.0)
+            };
+
+            try {
+                const response = await fetch('/api/download-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) throw new Error('PDF oluşturulamadı');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const win = window.open(url, '_blank');
+                if (!win) {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Transformator_Muhendislik_Raporu.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            } catch (err) {
+                console.error('PDF Hatası:', err);
+                alert('PDF oluşturulamadı: ' + err.message);
+            } finally {
+                if (btn) btn.textContent = 'Mühendislik Raporunu İndir (PDF)';
+            }
         });
-    }
-
-    function showTooltip(e, type) {
-        if (!latestData) return;
-        
-        // Tooltip div might not exist if it was removed from HTML by accident. Let's make sure it exists.
-        let tt = document.getElementById('diagram-tooltip');
-        if (!tt) {
-            tt = document.createElement('div');
-            tt.id = 'diagram-tooltip';
-            tt.className = 'diagram-tooltip hidden';
-            document.body.appendChild(tt);
-        }
-        
-        let html = '';
-        const {req, res} = latestData;
-        
-        if (type === 'hv') {
-            html = `<h4>Primer Tarafı (H.V)</h4>
-                    <ul>
-                        <li><span>İletken Ağırlığı:</span> <strong>${res.cost.weights.hv} Kg</strong></li>
-                        <li><span>Sarım Sayısı (N1):</span> <strong>${res.electrical.N1} Tur</strong></li>
-                        <li><span>Kesit Alanı:</span> <strong>${res.electrical.A1} mm²</strong></li>
-                    </ul>`;
-        } else if (type === 'lv') {
-            html = `<h4>Sekonder Tarafı (L.V)</h4>
-                    <ul>
-                        <li><span>İletken Ağırlığı:</span> <strong>${res.cost.weights.lv} Kg</strong></li>
-                        <li><span>Sarım Sayısı (N2):</span> <strong>${res.electrical.N2} Tur</strong></li>
-                        <li><span>Kesit Alanı:</span> <strong>${res.electrical.A2} mm²</strong></li>
-                    </ul>`;
-        } else if (type === 'core') {
-            html = `<h4>Trafo Genel Analizi</h4>
-                    <ul>
-                        <li><span>Görünür Güç:</span> <strong>${req.S} VA</strong></li>
-                        <li><span>Volt/Tur (Et):</span> <strong>${res.electrical.Et} V/Tur</strong></li>
-                        <li><span>Boşta Kayıp (P0):</span> <strong>${req.P0} W</strong></li>
-                        <li><span>Kısa Devre (Pk):</span> <strong>${req.Pk} W</strong></li>
-                        <li><span>Isı Üretimi:</span> <strong>${res.thermo.total_heat_loss} W</strong></li>
-                        <li><span>Önerilen Yağ:</span> <strong>${res.thermo.oil_volume_L} Litre</strong></li>
-                    </ul>`;
-        }
-        
-        tt.innerHTML = html;
-        tt.classList.add('visible');
-        
-        const rect = e.currentTarget.getBoundingClientRect();
-        
-        tt.style.left = (rect.left + (rect.width/2) - 100) + 'px';
-        tt.style.top = (rect.top - tt.offsetHeight - 15) + 'px';
-    }
-
-    function hideTooltip() {
-        const tt = document.getElementById('diagram-tooltip');
-        if(tt) tt.classList.remove('visible');
-    }
-
-    if (leftCoil) {
-        leftCoil.addEventListener('mouseenter', (e) => showTooltip(e, 'hv'));
-        leftCoil.addEventListener('mouseleave', hideTooltip);
-    }
-    
-    if (rightCoil) {
-        rightCoil.addEventListener('mouseenter', (e) => showTooltip(e, 'lv'));
-        rightCoil.addEventListener('mouseleave', hideTooltip);
-    }
-    
-    if (mechTank) {
-        // Just as an example, double clicking or hovering empty space could show core stats
-        // We'll bind it to the flatbars instead
-        const topFlatbar = document.querySelector('.mech-flatbar.top');
-        if (topFlatbar) {
-            topFlatbar.addEventListener('mouseenter', (e) => showTooltip(e, 'core'));
-            topFlatbar.addEventListener('mouseleave', hideTooltip);
-        }
     }
 });
+
