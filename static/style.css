@@ -500,37 +500,49 @@ input:focus, select:focus {
     scroll-behavior: smooth;
 }
 
+.mobile-results-header {
+    display: none;
+}
+
 /* Sticky Category Navigation Bar */
 .category-nav {
     display: flex;
-    gap: var(--space-2);
+    gap: 6px;
     overflow-x: auto;
-    padding: 10px 0;
+    padding: 8px 2px;
     margin-bottom: var(--space-4);
     border-bottom: 2px solid var(--border);
     position: sticky;
-    top: -1rem;
+    top: 0;
     background-color: var(--bg-base);
     z-index: 20;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.category-nav::-webkit-scrollbar {
+    display: none;
 }
 
 .cat-tab {
-    padding: 7px 16px;
-    border-radius: 20px;
+    padding: 7px 14px;
+    border-radius: 18px;
     background: var(--bg-surface);
     border: 1px solid var(--border);
     color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0;
     transition: all 0.2s ease;
 }
 
 .cat-tab:hover {
     border-color: var(--accent-blue);
     color: var(--accent-blue);
+    background: rgba(0, 102, 204, 0.05);
 }
 
 .cat-tab.active {
@@ -1418,7 +1430,28 @@ body.dark-mode .btn-mode.active {
         border-color: #EF4444;
     }
 
-    .sidebar {
+    /* Mobile State 1: Initial (Before Calculation) - Form is the Full-Width Homepage */
+    body.is-initial-state .sidebar {
+        position: static;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        box-shadow: none;
+        transform: none;
+        padding: 16px 14px;
+        border-right: none;
+    }
+
+    body.is-initial-state .sidebar-mobile-header .btn-close-sidebar {
+        display: none;
+    }
+
+    body.is-initial-state .results-area {
+        display: none;
+    }
+
+    /* Mobile State 2: Calculated - Results View is Active & Sidebar becomes Off-canvas Drawer */
+    body.is-calculated .sidebar {
         position: fixed;
         top: 0;
         left: 0;
@@ -1433,15 +1466,42 @@ body.dark-mode .btn-mode.active {
         padding: 16px 18px;
     }
 
-    .sidebar.collapsed {
-        margin-left: 0;
+    body.is-calculated .sidebar.collapsed {
         transform: translateX(-100%);
         box-shadow: none;
     }
 
-    .results-area {
+    body.is-calculated .results-area {
+        display: block;
         padding: 10px 12px;
         width: 100%;
+    }
+
+    .mobile-results-header {
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .btn-edit-params {
+        width: 100%;
+        padding: 10px 14px;
+        background: linear-gradient(135deg, rgba(0, 102, 204, 0.08), rgba(0, 102, 204, 0.16));
+        border: 1.5px solid var(--accent-blue);
+        color: var(--accent-blue);
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit-params:hover {
+        background: var(--accent-blue);
+        color: #FFFFFF;
     }
 }
 

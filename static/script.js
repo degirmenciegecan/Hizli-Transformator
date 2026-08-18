@@ -84,12 +84,16 @@ async function doCalculate(e) {
 
     console.log('doCalculate tetiklendi!');
 
-    // Mobile drawer UX: Close sidebar drawer on calculation
+    // Mobile UX state update
+    document.body.classList.remove('is-initial-state');
+    document.body.classList.add('is-calculated');
+
     if (window.innerWidth <= 900) {
         const sideEl = document.querySelector('.sidebar');
         const backEl = document.getElementById('sidebar-backdrop');
         if (sideEl) sideEl.classList.add('collapsed');
         if (backEl) backEl.classList.remove('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // UI state transition
@@ -1015,9 +1019,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Sidebar Toggle & Mobile Drawer Handling
+    // 2. Initial State & Mobile Drawer Handling
+    document.body.classList.add('is-initial-state');
+
     const sidebarBackdrop = document.getElementById('sidebar-backdrop');
     const btnCloseSidebar = document.getElementById('btn-close-sidebar');
+    const btnEditParams = document.getElementById('btn-edit-params');
 
     function openSidebar() {
         if (sidebar) sidebar.classList.remove('collapsed');
@@ -1041,17 +1048,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (btnEditParams) {
+        btnEditParams.addEventListener('click', openSidebar);
+    }
+
     if (btnCloseSidebar) {
         btnCloseSidebar.addEventListener('click', closeSidebar);
     }
 
     if (sidebarBackdrop) {
         sidebarBackdrop.addEventListener('click', closeSidebar);
-    }
-
-    // Auto-collapse sidebar on initial load if on mobile screen
-    if (window.innerWidth <= 900 && sidebar) {
-        sidebar.classList.add('collapsed');
     }
 
     // 2.1 Auto A & B Factor Generator from Energy Tariff and Financial NPV
@@ -1432,11 +1438,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             latestData = null;
 
+            document.body.classList.remove('is-calculated');
+            document.body.classList.add('is-initial-state');
+
             const resultsDiv = document.getElementById('results');
             const initialDiv = document.getElementById('initial-state');
             if (resultsDiv) resultsDiv.classList.add('hidden');
             if (initialDiv) initialDiv.classList.remove('hidden');
             if (sidebar) sidebar.classList.remove('collapsed');
+            if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
