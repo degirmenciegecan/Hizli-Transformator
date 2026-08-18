@@ -1,5 +1,4 @@
 """Economic analysis, TOC and Life Cycle Cost (Module 10)"""
-import math
 
 def _r(val, decimals=2):
     """Safely round values or return '—' for missing/invalid input."""

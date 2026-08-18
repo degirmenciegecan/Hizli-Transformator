@@ -1,5 +1,4 @@
 """Thermal and cooling analysis (Module 8)"""
-import math
 from engine.constants import OIL_PROPERTIES, COOLING_METHODS, THERMAL_LIMITS
 
 def _r(val, decimals=2):
@@ -57,9 +56,9 @@ def calculate_thermal(S, P0, Pk, oil_type='mineral', delta_T=60.0, cooling_metho
     n = cooling_info.get("oil_exponent", 0.8)
     top_oil_rise_C = delta_T
 
-    # 5. Hot spot temperature (°C)
+    # 5. Hot spot temperature (°C) (IEC 60076-7)
     H = 1.1 # hot-spot factor
-    g_r = 23.0 # average winding to oil gradient
+    g_r = 12.0 if cooling_method == 'ONAN' else 15.0 # winding to oil gradient (typically 10-13K in ONAN)
     hot_spot_temp_C = ambient_temp + top_oil_rise_C + (H * g_r)
 
     # 6. Thermal time constant (hours)
@@ -93,6 +92,7 @@ def calculate_thermal(S, P0, Pk, oil_type='mineral', delta_T=60.0, cooling_metho
         "total_heat_loss_W": _r(total_heat_loss_W),
         "cooling_area_m2": _r(cooling_area_m2),
         "top_oil_rise_C": _r(top_oil_rise_C),
+        "winding_oil_gradient_K": _r(g_r, 1),
         "hot_spot_temp_C": _r(hot_spot_temp_C),
         "thermal_time_constant_h": _r(thermal_time_constant_h),
         "conservator_volume_L": _r(conservator_volume_L),

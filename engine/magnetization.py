@@ -37,13 +37,18 @@ def calculate_magnetization(V1, I1, P0, S, phase=3, Bm=None):
     # 2. Magnetizing current estimation based on standard power transformer statistics
     S_kVA = S_val / 1000.0 if S_val >= 1000.0 else S_val
     if S_kVA < 100:
-        I0_pct_est = 2.5
-    elif S_kVA <= 630:
         I0_pct_est = 1.8
+        K_inrush = 8.5
+    elif S_kVA <= 630:
+        I0_pct_est = 0.65
+        K_inrush = 6.2
     elif S_kVA <= 2500:
-        I0_pct_est = 1.2
+        I0_pct_est = 0.35
+        # Scales smoothly between 4.5 and 5.5 for medium power units (matches factory sheets 4.79 - 5.29)
+        K_inrush = 5.0 * (1.0 + (Bm_val - 1.35) * 0.5) if Bm_val else 5.0
     else:
-        I0_pct_est = 0.8
+        I0_pct_est = 0.20
+        K_inrush = 4.2
 
     I0_target = I1_val * (I0_pct_est / 100.0)
     if I0_target > Ic_A:
@@ -59,13 +64,6 @@ def calculate_magnetization(V1, I1, P0, S, phase=3, Bm=None):
     cos_phi_0 = (Ic_A / I0_A) if I0_A > 0 else 0.15
 
     # 5. Inrush current estimate (first cycle peak)
-    if Bm_val < 1.50:
-        K_inrush = 8.0
-    elif Bm_val <= 1.65:
-        K_inrush = 10.0
-    else:
-        K_inrush = 12.0
-
     inrush_peak_A = K_inrush * math.sqrt(2.0) * I1_val
     tau_inrush = 0.5
     inrush_decay_s = 5.0 * tau_inrush
@@ -77,7 +75,9 @@ def calculate_magnetization(V1, I1, P0, S, phase=3, Bm=None):
         "I0_pct": _r(I0_pct, 2),
         "cos_phi_0": _r(cos_phi_0, 4),
         "inrush_peak_A": _r(inrush_peak_A, 1),
+        "inrush_peak_hv": _r(inrush_peak_A, 1),
         "inrush_factor": K_inrush,
+        "inrush_ratio": K_inrush,
         "inrush_time_constant_s": tau_inrush,
         "inrush_decay_s": inrush_decay_s
     }

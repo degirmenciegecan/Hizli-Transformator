@@ -6,3 +6,9 @@ env/
 .system_generated/
 *.log
 .DS_Store
+scratch/
+prices_cache.json
+*.pdf
+*.xlsx
+.user_uploaded/
+.tempmediaStorage/

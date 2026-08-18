@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hızlı Transformatör — Güç Transformatörü Tasarım & Analiz Sistemi</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=15.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=48.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="dashboard">
@@ -14,11 +14,14 @@
         <header class="header">
             <div class="logo">
                 <button id="toggle-sidebar" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-primary); margin-right: 4px;" title="Menüyü Gizle/Göster">☰</button>
-                <h1>Hızlı Transformatör <span class="badge badge-blue">IEC 60076</span></h1>
+                <h1 id="app-title" style="cursor: pointer; user-select: none;" title="Hızlı Transformatör">Hızlı Transformatör <span class="badge badge-blue">IEC 60076</span></h1>
                 <button id="theme-toggle" class="theme-toggle-btn" title="Karanlık/Aydınlık Tema">Karanlık Mod</button>
             </div>
             <div class="live-prices" id="live-prices">
                 <button id="btn-refresh-prices" class="btn-refresh-market" title="Piyasa Fiyatlarını Şimdi Güncelle">Piyasayı Güncelle</button>
+                <div id="market-stale-container" style="display: none;">
+                    <span id="market-stale-warning" class="market-stale-badge" title="Piyasa verisi 10 dakikadan eski">⚠️ Güncel Olmayabilir</span>
+                </div>
                 <div class="price-widget">
                     <span class="label">Bakır (USD/kg)</span>
                     <span class="value"><span id="cu-price">...</span> <a href="#" id="cu-source" target="_blank" class="source-link" title="LME Kaynağı">[LME]</a></span>
@@ -30,6 +33,10 @@
                 <div class="price-widget">
                     <span class="label">USD / TRY</span>
                     <span class="value"><span id="usd-try-price">...</span> <span class="currency-unit">TL</span></span>
+                </div>
+                <div class="price-widget">
+                    <span class="label">Elektrik (EPDK Sanayi)</span>
+                    <span class="value"><span id="elec-price">...</span> <a href="https://www.epdk.gov.tr/" target="_blank" class="source-link" title="EPDK Resmi Tarifesi">[EPDK]</a></span>
                 </div>
                 <div class="live-indicator">
                     <span class="pulse-dot"></span>
@@ -49,35 +56,52 @@
                 </div>
 
                 <form id="calc-form" onsubmit="event.preventDefault(); doCalculate(event); return false;">
+                    <!-- Tasarım Modu Seçici (Manuel vs Otomatik Optimizasyon) -->
+                    <div class="design-mode-container">
+                        <div class="mode-label">Tasarım & Hesaplama Modu</div>
+                        <div class="mode-toggle-group">
+                            <button type="button" id="btn-mode-manual" class="btn-mode active">
+                                ✍️ Manuel Mod
+                            </button>
+                            <button type="button" id="btn-mode-opt" class="btn-mode">
+                                ⚡ Optimizasyon Modu
+                            </button>
+                        </div>
+                        <input type="hidden" id="optimization_mode" value="false">
+                        <div id="opt-mode-hint" class="opt-mode-hint">
+                            <span class="hint-label">⚡ İteratif Döngü:</span> Motor, garanti P0/Pk hedefleri için en uygun k (V/tur) sabitini otomatik yakınsar.
+                        </div>
+                    </div>
+
                     <!-- 1. Temel Parametreler -->
                     <div class="section-title">1. Temel Elektriksel Parametreler</div>
                     <div class="form-group">
                         <label>Görünür Güç S (VA)</label>
-                        <input type="number" id="S" value="50000" step="any" required>
+                        <input type="number" id="S" placeholder="örn. 50000" step="any" required>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Primer V1 (V)</label>
-                            <input type="number" id="V1" value="34500" step="any" required>
+                            <input type="number" id="V1" placeholder="örn. 34500" step="any" required>
                         </div>
                         <div class="form-group">
                             <label>Sekonder V2 (V)</label>
-                            <input type="number" id="V2" value="400" step="any" required>
+                            <input type="number" id="V2" placeholder="örn. 400" step="any" required>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Empedans uk (%)</label>
-                            <input type="number" id="uk" value="4.5" step="0.01" required>
+                            <input type="number" id="uk" placeholder="örn. 4.5" step="0.01" required>
                         </div>
                         <div class="form-group">
                             <label>Boşta Kayıp P0 (W)</label>
-                            <input type="number" id="P0" value="150" step="any" required>
+                            <input type="number" id="P0" placeholder="örn. 150" step="any" required>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Yükte (Kısa Devre) Kaybı Pk (W)</label>
-                        <input type="number" id="Pk" value="900" step="any" required>
+                        <input type="number" id="Pk" placeholder="örn. 900" step="any" required>
                     </div>
 
                     <!-- 2. Tasarım & Malzeme Seçimleri -->
@@ -115,6 +139,18 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label>Vektör Grubu & Bağlantı Tipi</label>
+                        <select id="vector_group">
+                            <option value="Dyn11" selected>Dyn11 (Üçgen / Nötrlü Yıldız - 330° - Standart Dağıtım)</option>
+                            <option value="Dyn1">Dyn1 (Üçgen / Nötrlü Yıldız - 30°)</option>
+                            <option value="Yyn0">Yyn0 (Yıldız / Nötrlü Yıldız - 0°)</option>
+                            <option value="YNyn0">YNyn0 (Nötrlü Yıldız / Nötrlü Yıldız - 0° - Çift Nötr)</option>
+                            <option value="Yd11">Yd11 (Yıldız / Üçgen - 330° - Santral & Step-Up)</option>
+                            <option value="Yd1">Yd1 (Yıldız / Üçgen - 30°)</option>
+                            <option value="Dd0">Dd0 (Üçgen / Üçgen - 0°)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Manyetik Nüve Sacı</label>
                         <select id="core_material">
                             <option value="M4">M4 Grain-Oriented Silisli Sac (1.60 T)</option>
@@ -140,17 +176,17 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>İstif Katsayısı (k)</label>
-                                    <input type="number" id="k_constant" value="0.45" step="0.01">
+                                    <input type="number" id="k_constant" placeholder="0.45" step="0.01">
                                 </div>
                                 <div class="form-group">
                                     <label>Üst Yağ Sınırı ΔT (°C)</label>
-                                    <input type="number" id="delta_T" value="60" step="1">
+                                    <input type="number" id="delta_T" placeholder="60" step="1">
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Ortam Sıcaklığı (°C)</label>
-                                    <input type="number" id="ambient_temp" value="30" step="1">
+                                    <input type="number" id="ambient_temp" placeholder="30" step="1">
                                 </div>
                                 <div class="form-group">
                                     <label>Soğutma Sınıfı</label>
@@ -165,11 +201,54 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label title="Boşta kayıp kapitalizasyon bedeli">A Faktörü (USD/W)</label>
-                                    <input type="number" id="A_factor" value="8.0" step="0.1">
+                                    <input type="number" id="A_factor" placeholder="8.0" step="0.1">
                                 </div>
                                 <div class="form-group">
                                     <label title="Yükte kayıp kapitalizasyon bedeli">B Faktörü (USD/W)</label>
-                                    <input type="number" id="B_factor" value="2.0" step="0.1">
+                                    <input type="number" id="B_factor" placeholder="2.0" step="0.1">
+                                </div>
+                            </div>
+
+                            <!-- Automatic A & B Factor Generator Box -->
+                            <div class="auto-ab-box">
+                                <button type="button" id="btn-toggle-auto-ab" class="btn-toggle-auto-ab">
+                                    <span>⚡ Enerji Tarifesinden Otomatik Türet (NPV)</span>
+                                    <span id="auto-ab-arrow">▼</span>
+                                </button>
+                                <div id="auto-ab-panel" class="auto-ab-panel hidden">
+                                    <div class="form-group" style="margin-bottom: 8px;">
+                                        <label>Tarife Kaynağı (Canlı / Standart)</label>
+                                        <select id="sel-tariff-preset" style="font-size: 0.78rem;">
+                                            <option value="epdk_live">⚡ EPDK Sanayi OG (Canlı Kur: ~0.10 $/kWh)</option>
+                                            <option value="epias_spot">📊 EPİAŞ Spot PTF (0.09 $/kWh)</option>
+                                            <option value="eu_industry">🇪🇺 Avrupa Sanayi (Eurostat: 0.16 $/kWh)</option>
+                                            <option value="us_industry">🇺🇸 ABD Sanayi (EIA: 0.08 $/kWh)</option>
+                                            <option value="custom">✍️ Özel Değer Gir</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Elektrik Tarifesi ($/kWh)</label>
+                                            <input type="number" id="calc_energy_cost" value="0.103" step="0.001">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>İskonto / Faiz Oranı (%)</label>
+                                            <input type="number" id="calc_discount_rate" value="8.0" step="0.5">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Ekonomik Ömür (Yıl)</label>
+                                            <input type="number" id="calc_life_years" value="25" step="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Ortalama Yük Oranı (%)</label>
+                                            <input type="number" id="calc_load_ratio" value="50" step="5">
+                                        </div>
+                                    </div>
+                                    <div class="auto-ab-formula-note">
+                                        PWF: <strong id="val-pwf">10.67</strong> | Yıllık Boşta: <strong>8.76 kWh/W</strong>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -199,11 +278,148 @@
                     
                     <!-- Category Sticky Nav Bar (Smooth Scroll) -->
                     <div class="category-nav">
-                        <button class="cat-tab active" data-target="cat-1">1. Elektriksel Karakteristik</button>
-                        <button class="cat-tab" data-target="cat-2">2. Nüve & Manyetik Tasarım</button>
-                        <button class="cat-tab" data-target="cat-3">3. Termal & Dinamik Güvenlik</button>
-                        <button class="cat-tab" data-target="cat-4">4. Enerji Verimliliği & Kayıplar</button>
-                        <button class="cat-tab" data-target="cat-5">5. Finansal İhale, TOC & LCC Analizi</button>
+                        <button class="cat-tab active" data-target="cat-1">1. Elektriksel</button>
+                        <button class="cat-tab" data-target="cat-2">2. Nüve & Manyetik</button>
+                        <button class="cat-tab" data-target="cat-cad">📐 2D CAD Kesit</button>
+                        <button class="cat-tab" data-target="cat-3">3. Termal & Güvenlik</button>
+                        <button class="cat-tab" data-target="cat-4">4. Enerji & Verim</button>
+                        <button class="cat-tab" data-target="cat-5">5. Finansal & TOC</button>
+                    </div>
+
+                    <!-- IEC 60076 Standart Uygunluk & Kalite Denetim Özeti Banner -->
+                    <div class="iec-audit-banner" id="iec-audit-banner">
+                        <div class="iec-audit-header">
+                            <div class="iec-audit-title">
+                                <span style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary);">IEC 60076 Standart Uygunluk & Kalite Denetimi</span>
+                                <span class="badge badge-green" id="iec-total-score">5/5 ONAYLI</span>
+                            </div>
+                            <small style="color: var(--text-secondary); font-size: 0.8rem;">Uluslararası Elektroteknik Komisyonu (IEC) Güç Transformatörü Norm Denetim Sonuçları</small>
+                        </div>
+                        <div class="iec-chips-grid">
+                            <div class="iec-chip" id="chip-top-oil">
+                                <div class="iec-chip-name">Üst Yağ Isınma (Δθ_oil)</div>
+                                <div class="iec-chip-val"><span id="iec-val-oil">—</span> <span class="badge badge-green" id="iec-badge-oil">IEC 60076-2 UYGUN</span></div>
+                            </div>
+                            <div class="iec-chip" id="chip-hotspot">
+                                <div class="iec-chip-name">Hot-Spot Sargı Tepe (θ_hs)</div>
+                                <div class="iec-chip-val"><span id="iec-val-hs">—</span> <span class="badge badge-green" id="iec-badge-hs">GÜVENLİ (IEC 60076-7)</span></div>
+                            </div>
+                            <div class="iec-chip" id="chip-i0">
+                                <div class="iec-chip-name">Boşta Akım Oranı (I0 %)</div>
+                                <div class="iec-chip-val"><span id="iec-val-i0">—</span> <span class="badge badge-green" id="iec-badge-i0">STANDART İÇİ</span></div>
+                            </div>
+                            <div class="iec-chip" id="chip-sc">
+                                <div class="iec-chip-name">Kısa Devre Termal Dayanım</div>
+                                <div class="iec-chip-val"><span>2.0 Saniye</span> <span class="badge badge-green" id="iec-badge-sc">IEC 60076-5 ONAYLI</span></div>
+                            </div>
+                            <div class="iec-chip" id="chip-dielectric">
+                                <div class="iec-chip-name">Yalıtım & BIL Seviyesi</div>
+                                <div class="iec-chip-val"><span id="iec-val-bil">—</span> <span class="badge badge-purple" id="iec-badge-bil">IEC 60076-3 UYGUN</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TEDAŞ-MLZ / 95-012.C & AB Ecodesign Şartname Uygunluk Banner Panosu -->
+                    <div class="iec-audit-banner" id="std-audit-banner" style="border-left-color: #06b6d4;">
+                        <div class="iec-audit-header">
+                            <div class="iec-audit-title">
+                                <span style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary);">TEDAŞ-MLZ / 95-012.C & AB Ecodesign Şartname Uygunluğu</span>
+                                <span class="badge badge-green" id="std-total-score">TEDAŞ & TIER 2 ONAYLI</span>
+                                <span class="badge badge-cyan" id="std-energy-badge">A+ EU Tier 2 Ready</span>
+                            </div>
+                            <small style="color: var(--text-secondary); font-size: 0.8rem;">Türkiye Dağıtım Transformatörleri Malzeme Şartnamesi & AB Ecodesign Direktifi (EU 2019/1783 Tier 2)</small>
+                        </div>
+                        <div class="iec-chips-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                            <!-- Chip 1: TEDAŞ P0 -->
+                            <div class="iec-chip" id="chip-tedas-p0">
+                                <div class="iec-chip-name">TEDAŞ Boşta Kayıp (P0)</div>
+                                <div class="iec-chip-val">
+                                    <span id="tedas-p0-act-chip">—</span>
+                                    <span class="badge badge-green" id="tedas-p0-badge">UYGUN</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 2: TEDAŞ Pk -->
+                            <div class="iec-chip" id="chip-tedas-pk">
+                                <div class="iec-chip-name">TEDAŞ Yükte Kayıp (Pk)</div>
+                                <div class="iec-chip-val">
+                                    <span id="tedas-pk-act-chip">—</span>
+                                    <span class="badge badge-green" id="tedas-pk-badge">UYGUN</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 3: TEDAŞ uk -->
+                            <div class="iec-chip" id="chip-tedas-uk">
+                                <div class="iec-chip-name">Empedans (uk Toleransı)</div>
+                                <div class="iec-chip-val">
+                                    <span id="tedas-uk-act-chip">—</span>
+                                    <span class="badge badge-green" id="tedas-uk-badge">±%10 İÇİ</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 4: IEC Tolerans -->
+                            <div class="iec-chip" id="chip-iec-tol">
+                                <div class="iec-chip-name">IEC 60076-1 Toleransı</div>
+                                <div class="iec-chip-val">
+                                    <span>P0/Pk ≤ +%15</span>
+                                    <span class="badge badge-green">KABUL İÇİ</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 5: TEDAŞ Kararı -->
+                            <div class="iec-chip" id="chip-tedas-decision">
+                                <div class="iec-chip-name">TEDAŞ Şartname Kararı</div>
+                                <div class="iec-chip-val">
+                                    <span id="tedas-decision-text">ŞARTNAME ONAYLI</span>
+                                    <span class="badge badge-green" id="tedas-decision-badge">ONAYLI</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 6: Tier 2 P0 -->
+                            <div class="iec-chip" id="chip-tier2-p0">
+                                <div class="iec-chip-name">Tier 2 Boşta Kayıp (P0)</div>
+                                <div class="iec-chip-val">
+                                    <span id="tier2-p0-act-chip">—</span>
+                                    <span class="badge badge-green" id="tier2-p0-badge">TIER 2 UYGUN</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 7: Tier 2 Pk -->
+                            <div class="iec-chip" id="chip-tier2-pk">
+                                <div class="iec-chip-name">Tier 2 Yükte Kayıp (Pk)</div>
+                                <div class="iec-chip-val">
+                                    <span id="tier2-pk-act-chip">—</span>
+                                    <span class="badge badge-green" id="tier2-pk-badge">TIER 2 UYGUN</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 8: Zirve Verim PEI -->
+                            <div class="iec-chip" id="chip-pei">
+                                <div class="iec-chip-name">Zirve Verim İndeksi (PEI)</div>
+                                <div class="iec-chip-val">
+                                    <span id="std-pei-chip">—</span>
+                                    <span class="badge badge-cyan" id="std-pei-badge">EN 50588-1</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 9: Ecodesign Kararı -->
+                            <div class="iec-chip" id="chip-tier2-decision">
+                                <div class="iec-chip-name">Ecodesign Direktif Kararı</div>
+                                <div class="iec-chip-val">
+                                    <span id="tier2-decision-text">EU TIER 2 ONAYLI</span>
+                                    <span class="badge badge-green" id="tier2-decision-badge">UYGUN</span>
+                                </div>
+                            </div>
+
+                            <!-- Chip 10: Enerji Sınıfı -->
+                            <div class="iec-chip" id="chip-energy-class">
+                                <div class="iec-chip-name">Enerji Verimlilik Sınıfı</div>
+                                <div class="iec-chip-val">
+                                    <span id="std-class-desc">Ultra-Verimli</span>
+                                    <span class="badge badge-green" id="std-class-badge">A+ TIER 2</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- KATEGORİ 1: Elektriksel & Çalışma Karakteristiği -->
@@ -217,16 +433,18 @@
                             <div class="card">
                                 <h3><span>Temel Elektriksel & Eşdeğer Devre</span> <span class="badge badge-blue">Per-Faz Model</span></h3>
                                 <ul class="param-list">
-                                    <li><span class="label">Primer Anma Akımı (I1):</span> <strong><span id="res-I1"></span> A</strong></li>
-                                    <li><span class="label">Sekonder Anma Akımı (I2):</span> <strong><span id="res-I2"></span> A</strong></li>
-                                    <li><span class="label">Sarım Oranı (a = V1/V2):</span> <strong><span id="res-a"></span></strong></li>
+                                    <li><span class="label">Vektör Grubu (Bağlantı):</span> <strong><span id="res-vg-name">Dyn11</span> (<span id="res-vg-shift">330°</span>)</strong></li>
+                                    <li><span class="label">Primer / Sekonder Faz Gerilimi:</span> <strong><span id="res-v1-ph">—</span> V / <span id="res-v2-ph">—</span> V</strong></li>
+                                    <li><span class="label">Primer / Sekonder Faz Akımı:</span> <strong><span id="res-i1-ph">—</span> A / <span id="res-i2-ph">—</span> A</strong></li>
+                                    <li><span class="label">Primer Anma Hat Akımı (I1):</span> <strong><span id="res-I1"></span> A</strong></li>
+                                    <li><span class="label">Sekonder Anma Hat Akımı (I2):</span> <strong><span id="res-I2"></span> A</strong></li>
+                                    <li><span class="label">Sarım Oranı (a = N1/N2):</span> <strong><span id="res-a"></span></strong></li>
                                     <li><span class="label">Kısa Devre Gerilimi (Vk):</span> <strong><span id="res-Vk"></span> V</strong></li>
                                     <li><span class="label">Eşdeğer Empedans (Zk):</span> <strong><span id="res-Zk"></span> Ω/faz</strong></li>
                                     <li><span class="label">Eşdeğer Direnç (Rk):</span> <strong><span id="res-Rk"></span> Ω/faz</strong></li>
                                     <li><span class="label">Eşdeğer Reaktans (Xk):</span> <strong><span id="res-Xk"></span> Ω/faz</strong></li>
                                     <li><span class="label">Kaçak Endüktans (Lk):</span> <strong><span id="res-Lk"></span> mH</strong></li>
-                                    <li><span class="label">Direnç Oranı (ur%):</span> <strong><span id="res-ur"></span> %</strong></li>
-                                    <li><span class="label">Reaktans Oranı (ux%):</span> <strong><span id="res-ux"></span> %</strong></li>
+                                    <li><span class="label">Direnç / Reaktans Oranı:</span> <strong>%<span id="res-ur"></span> / %<span id="res-ux"></span></strong></li>
                                     <li style="border-top: 1px solid var(--border); padding-top: 6px;"><span class="label" style="font-weight: 600;">Tam Yük Verimi (cosφ=1):</span> <strong style="color: var(--accent-green); font-size: 1.05rem;"><span id="res-eff"></span> %</strong></li>
                                 </ul>
                             </div>
@@ -256,6 +474,14 @@
                                         <!-- Dinamik -->
                                     </tbody>
                                 </table>
+                                <div class="chart-box" style="margin-top: 14px;">
+                                    <div class="chart-header">
+                                        <span>Gerilim Regülasyonu Eğrisi (cosφ vs ε%)</span>
+                                    </div>
+                                    <div class="chart-canvas-wrapper" style="position: relative; height: 180px; width: 100%;">
+                                        <canvas id="chart-vreg"></canvas>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Card 1.3: Mıknatıslanma & Inrush (Full width in this group) -->
@@ -283,6 +509,15 @@
                                         <div class="val orange"><span id="res-mag-inrush"></span> A</div>
                                     </div>
                                 </div>
+                                <div class="chart-box" style="margin-top: 16px;">
+                                    <div class="chart-header">
+                                        <span>İlk Devreye Alma Inrush Dalga Formu (0 - 100 ms)</span>
+                                        <span class="badge badge-blue">Sönümlü Tepe Akımı</span>
+                                    </div>
+                                    <div class="chart-canvas-wrapper" style="position: relative; height: 190px; width: 100%;">
+                                        <canvas id="chart-inrush"></canvas>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -300,30 +535,34 @@
                                 <ul class="param-list">
                                     <li><span class="label">Nüve Malzemesi:</span> <strong><span id="res-core-label"></span></strong></li>
                                     <li><span class="label">Çalışma Akı Yoğunluğu (Bm):</span> <strong><span id="res-core-bm"></span> Tesla</strong></li>
-                                    <li><span class="label">Net Nüve Kesit Alanı (Ai):</span> <strong><span id="res-core-ai"></span> cm²</strong></li>
-                                    <li><span class="label">Brüt Nüve Kesit Alanı (Ag):</span> <strong><span id="res-core-ag"></span> cm²</strong></li>
+                                    <li><span class="label">Volts/Tur Sabiti (k):</span> <strong><span id="res-k-val">0.45</span> (<span id="res-opt-mode-badge" class="badge badge-blue">Manuel</span>)</strong></li>
+                                    <li><span class="label">Dinamik Oranlar (Hw/d | A/d):</span> <strong><span id="res-ratio-hw">—</span> | <span id="res-ratio-a">—</span></strong></li>
                                     <li><span class="label">Kademeli Nüve Çapı (d):</span> <strong><span id="res-core-dia"></span> mm</strong></li>
+                                    <li><span class="label">Bacak Merkez Mesafesi (A):</span> <strong><span id="res-limb-dist">—</span> mm</strong></li>
+                                    <li><span class="label">Pencere Yüksekliği (Hw):</span> <strong><span id="res-win-height">—</span> mm</strong></li>
+                                    <li><span class="label">Net / Brüt Kesit (İstif Kf):</span> <strong><span id="res-core-ai"></span> / <span id="res-core-ag"></span> cm² (Kf: <span id="res-core-stack"></span>)</strong></li>
                                     <li><span class="label">Hesapsal Nüve Ağırlığı:</span> <strong><span id="res-core-weight-detail"></span> kg</strong></li>
-                                    <li><span class="label">Hesapsal Boşta Kayıp (P0):</span> <strong><span id="res-core-p0-est"></span> W</strong></li>
-                                    <li><span class="label">Histerezis Kayıp Payı:</span> <strong><span id="res-core-physt"></span> W</strong></li>
-                                    <li><span class="label">Eddy (Foucault) Kayıp Payı:</span> <strong><span id="res-core-peddy"></span> W</strong></li>
-                                    <li><span class="label">İstif / Sac Faktörü (Kf):</span> <strong><span id="res-core-stack"></span></strong></li>
+                                    <li><span class="label">Hesapsal Boşta Kayıp (P0):</span> <strong><span id="res-core-p0-est"></span> W</strong> (<span id="res-core-physt"></span> W Hist + <span id="res-core-peddy"></span> W Eddy)</li>
                                 </ul>
                             </div>
 
-                            <!-- Card 2.2: Sargı İmalat Analizi -->
+                            <!-- Card 2.2: Sargı İmalat & Yük Kayıp Ayrışımı -->
                             <div class="card">
-                                <h3><span>Sargı & İletken Boyutlandırma</span> <span class="badge badge-purple">İmalat Parametreleri</span></h3>
+                                <h3><span>Sargı İmalat & Kayıp Ayrışımı</span> <span class="badge badge-purple">IEC 60076-1</span></h3>
                                 <ul class="param-list">
                                     <li><span class="label">Spesifik Gerilim (Et):</span> <strong><span id="res-et-val"></span> V/Tur</strong></li>
-                                    <li><span class="label">Primer Sarım Sayısı (N1):</span> <strong><span id="res-hv-turns"></span> Tur</strong></li>
-                                    <li><span class="label">Sekonder Sarım Sayısı (N2):</span> <strong><span id="res-lv-turns"></span> Tur</strong></li>
+                                    <li><span class="label">Primer / Sekonder Sarım:</span> <strong><span id="res-hv-turns"></span> / <span id="res-lv-turns"></span> Tur</strong></li>
                                     <li><span class="label">Primer Kesit / Çap:</span> <strong><span id="res-hv-area"></span> mm² (<span id="res-hv-dia"></span> mm)</strong></li>
                                     <li><span class="label">Sekonder Kesit / Çap:</span> <strong><span id="res-lv-area"></span> mm² (<span id="res-lv-dia"></span> mm)</strong></li>
-                                    <li><span class="label">Paralel İletken Sayısı (HV / LV):</span> <strong><span id="res-par-hv"></span> / <span id="res-par-lv"></span></strong></li>
+                                    <li><span class="label">Toplam İletken Boyu (HV / LV):</span> <strong>HV: <span id="res-len-hv"></span> m | LV: <span id="res-len-lv"></span> m</strong></li>
+                                    <li><span class="label">Paralel İletken (HV / LV):</span> <strong><span id="res-par-hv"></span> / <span id="res-par-lv"></span></strong></li>
                                     <li><span class="label">Ortalama Sarım Boyu (MLT):</span> <strong>HV: <span id="res-mlt-hv"></span> mm | LV: <span id="res-mlt-lv"></span> mm</strong></li>
                                     <li><span class="label">75°C IEC Direnci (HV / LV):</span> <strong><span id="res-r75-hv"></span> Ω / <span id="res-r75-lv"></span> Ω</strong></li>
-                                    <li><span class="label">Toplam İletken Uzunluğu:</span> <strong>HV: <span id="res-len-hv"></span> m | LV: <span id="res-len-lv"></span> m</strong></li>
+                                    <li><span class="label">Deri Kalınlığı (Skin Depth δ @ 75°C):</span> <strong>HV: <span id="res-delta-hv"></span> mm | LV: <span id="res-delta-lv"></span> mm</strong></li>
+                                    <li style="border-top: 1px solid var(--border); padding-top: 4px;"><span class="label">DC Bakır Kaybı (Pdc):</span> <strong><span id="res-pk-dc"></span> W</strong></li>
+                                    <li><span class="label">Sargı Eddy Kaybı (Peddy):</span> <strong style="color: var(--accent-cyan);"><span id="res-pk-eddy"></span> W (<span id="res-kec-pct"></span>%)</strong></li>
+                                    <li><span class="label">Kazan Saçılma Kaybı (P_stray):</span> <strong style="color: var(--accent-orange);"><span id="res-pk-stray"></span> W (<span id="res-stray-pct"></span>%)</strong></li>
+                                    <li style="border-top: 1px solid var(--border); padding-top: 6px;"><span class="label" style="font-weight: 600;">Hesaplanan Pk vs Garanti Pk:</span> <strong style="color: var(--accent-green);"><span id="res-pk-calc-total"></span> W / <span id="res-pk-guar"></span> W (<span id="res-pk-diff-label"></span>)</strong></li>
                                 </ul>
                             </div>
 
@@ -357,6 +596,17 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- KATEGORİ: 2D Parametrik Teknik Kesit & CAD Boyutlandırma -->
+                    <div class="category-group" id="cat-cad">
+                        <div class="category-group-header">
+                            <span>2D Parametrik Teknik Kesit & Boyutlandırma (CAD Blueprint)</span>
+                            <span class="cat-badge badge-cyan">1:1 Vektörel CAD</span>
+                        </div>
+                        <div class="cad-card-wrapper" style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 10px; box-shadow: var(--shadow-sm);">
+                            <div id="cad-container"></div>
                         </div>
                     </div>
 
@@ -442,6 +692,16 @@
                                         <!-- Dinamik -->
                                     </tbody>
                                 </table>
+
+                                <div class="chart-box" style="margin-top: 18px;">
+                                    <div class="chart-header">
+                                        <span>Verim — Yük Eğrisi (η % vs Yük Oranı)</span>
+                                        <span class="badge badge-green">İnteraktif Karakteristik</span>
+                                    </div>
+                                    <div class="chart-canvas-wrapper" style="position: relative; height: 220px; width: 100%;">
+                                        <canvas id="chart-efficiency"></canvas>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -481,6 +741,58 @@
                                     <li><span class="label">Toplam Trafo Ağırlığı:</span> <strong>Kuru: <span id="res-dry-weight"></span> kg | Islak: <span id="res-wet-weight"></span> kg</strong></li>
                                     <li><span class="label">Yıllık İşletme Enerji Kayıp Bedeli:</span> <strong><span id="res-annual-cost"></span> USD / Yıl</strong></li>
                                 </ul>
+
+                                <!-- Cu vs Al İhale Karşılaştırması Bölümü -->
+                                <div class="chart-box" style="margin-top: 18px;">
+                                    <div class="chart-header">
+                                        <span>Bakır (Cu) vs Alüminyum (Al) İhale Kıyaslaması</span>
+                                        <span class="badge badge-purple" id="res-comp-advantage">İhale Karar Analizi</span>
+                                    </div>
+                                    <div style="overflow-x: auto; margin-top: 6px;">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Karşılaştırma Kriteri</th>
+                                                    <th style="color: #E65100;">Bakır Tasarım (Cu)</th>
+                                                    <th style="color: #0066CC;">Alüminyum Tasarım (Al)</th>
+                                                    <th>İhale & Mühendislik Farkı</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>İletken Sargı Ağırlığı</strong></td>
+                                                    <td><span id="comp-cu-weight">—</span> kg</td>
+                                                    <td><span id="comp-al-weight">—</span> kg</td>
+                                                    <td><span class="badge badge-blue" id="comp-weight-diff">—</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>İletken İmalat Maliyeti</strong></td>
+                                                    <td><span id="comp-cu-cost">—</span> USD</td>
+                                                    <td><span id="comp-al-cost">—</span> USD</td>
+                                                    <td><strong style="color: var(--accent-green);" id="comp-cost-diff">—</strong></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Trafo Toplam Ağırlığı (Islak)</strong></td>
+                                                    <td><span id="comp-cu-wet">—</span> kg</td>
+                                                    <td><span id="comp-al-wet">—</span> kg</td>
+                                                    <td><span id="comp-wet-diff">—</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Toplam Sahip Olma (TOC)</strong></td>
+                                                    <td><span id="comp-cu-toc">—</span> USD</td>
+                                                    <td><span id="comp-al-toc">—</span> USD</td>
+                                                    <td><strong id="comp-toc-diff">—</strong></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Gövde / Tank Hacmi</strong></td>
+                                                    <td>Standart (Kompakt)</td>
+                                                    <td>+%15 Daha Geniş Gövde</td>
+                                                    <td><span style="font-size: 0.8rem; color: var(--text-muted);">Cu %15 yer tasarrufu sağlar</span></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -488,6 +800,7 @@
                     <!-- Action Buttons -->
                     <div class="action-buttons">
                         <button id="btn-reset" class="action-btn action-btn-secondary" type="button">Parametreleri Sıfırla</button>
+                        <button id="btn-download-excel" class="action-btn action-btn-excel" type="button">Mühendislik Raporunu İndir (Excel)</button>
                         <button id="btn-download-pdf" class="action-btn action-btn-primary" type="button">Mühendislik Raporunu İndir (PDF)</button>
                     </div>
 
@@ -557,6 +870,7 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=15.0"></script>
+    <script src="{{ url_for('static', filename='cad_renderer.js') }}?v=47.0"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=47.0"></script>
 </body>
 </html>

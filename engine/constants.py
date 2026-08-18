@@ -6,13 +6,17 @@ CONDUCTOR = {
         'resistivity_20': 1.724e-8,    # Ω·m at 20°C
         'temp_coeff': 0.00393,          # 1/°C
         'density': 8900,                # kg/m³
-        'J_default': 3.0,               # A/mm² (current density)
+        'J_default_hv': 2.0,            # A/mm² (HV winding current density)
+        'J_default_lv': 2.3,            # A/mm² (LV foil/strip current density)
+        'J_default': 2.15,
     },
     'Al': {
         'resistivity_20': 2.826e-8,
         'temp_coeff': 0.00403,
         'density': 2700,
-        'J_default': 1.5,
+        'J_default_hv': 1.2,
+        'J_default_lv': 1.4,
+        'J_default': 1.3,
     }
 }
 
@@ -118,3 +122,112 @@ THERMAL_LIMITS = {
     'ambient_max': 40,          # °C
     'hot_spot_absolute_max': 98, # °C (for 65K rise class)
 }
+
+# Standard Three-Phase Transformer Vector Groups (IEC 60076-1)
+VECTOR_GROUPS = {
+    'Dyn11': {
+        'code': 'Dyn11',
+        'name': 'Dyn11 (Üçgen / Nötrlü Yıldız - 330°)',
+        'primary_conn': 'D',
+        'secondary_conn': 'yn',
+        'phase_displacement_deg': 330,
+        'clock': 11,
+        'description': 'Standart Dağıtım Transformatörü (En Yaygın Şebeke Grubu)'
+    },
+    'Dyn1': {
+        'code': 'Dyn1',
+        'name': 'Dyn1 (Üçgen / Nötrlü Yıldız - 30°)',
+        'primary_conn': 'D',
+        'secondary_conn': 'yn',
+        'phase_displacement_deg': 30,
+        'clock': 1,
+        'description': 'Üçgen / Yıldız (30° Faz Gecikmeli)'
+    },
+    'Yyn0': {
+        'code': 'Yyn0',
+        'name': 'Yyn0 (Yıldız / Nötrlü Yıldız - 0°)',
+        'primary_conn': 'Y',
+        'secondary_conn': 'yn',
+        'phase_displacement_deg': 0,
+        'clock': 0,
+        'description': 'Yıldız / Yıldız Sıfır Faz Kayması'
+    },
+    'YNyn0': {
+        'code': 'YNyn0',
+        'name': 'YNyn0 (Nötrlü Yıldız / Nötrlü Yıldız - 0°)',
+        'primary_conn': 'YN',
+        'secondary_conn': 'yn',
+        'phase_displacement_deg': 0,
+        'clock': 0,
+        'description': 'Çift Nötrlü İletim & Dağıtım Transformatörü'
+    },
+    'Yd11': {
+        'code': 'Yd11',
+        'name': 'Yd11 (Yıldız / Üçgen - 330°)',
+        'primary_conn': 'Y',
+        'secondary_conn': 'd',
+        'phase_displacement_deg': 330,
+        'clock': 11,
+        'description': 'Santral Step-Up / Yükseltici Transformatör'
+    },
+    'Yd1': {
+        'code': 'Yd1',
+        'name': 'Yd1 (Yıldız / Üçgen - 30°)',
+        'primary_conn': 'Y',
+        'secondary_conn': 'd',
+        'phase_displacement_deg': 30,
+        'clock': 1,
+        'description': 'Yıldız / Üçgen (30° Faz Gecikmeli)'
+    },
+    'Dd0': {
+        'code': 'Dd0',
+        'name': 'Dd0 (Üçgen / Üçgen - 0°)',
+        'primary_conn': 'D',
+        'secondary_conn': 'd',
+        'phase_displacement_deg': 0,
+        'clock': 0,
+        'description': 'Üçgen / Üçgen Endüstriyel Transformatör'
+    }
+}
+
+# Transformer Core & Window Geometric Proportions by Power Range (Directive 4)
+CORE_GEOMETRY_RATIOS = [
+    {'min_kVA': 25, 'max_kVA': 100, 'hw_d_range': (2.2, 2.5), 'a_d_range': (1.8, 2.0)},
+    {'min_kVA': 100, 'max_kVA': 630, 'hw_d_range': (2.5, 2.8), 'a_d_range': (2.0, 2.2)},
+    {'min_kVA': 630, 'max_kVA': 2500, 'hw_d_range': (2.8, 3.2), 'a_d_range': (2.2, 2.4)},
+    {'min_kVA': 2500, 'max_kVA': 50000, 'hw_d_range': (3.2, 3.6), 'a_d_range': (2.3, 2.5)},
+]
+
+def get_core_geometry_ratios(S_kVA):
+    """
+    Interpolates window height ratio (Hw/d) and limb center distance ratio (A/d)
+    based on transformer power rating (kVA).
+    """
+    try:
+        s = float(S_kVA) if S_kVA is not None and S_kVA != "—" else 50.0
+    except:
+        s = 50.0
+
+    if s <= 25.0:
+        return 2.20, 1.80
+    elif s <= 100.0:
+        t = (s - 25.0) / (100.0 - 25.0)
+        hw_d = 2.20 + t * (2.50 - 2.20)
+        a_d = 1.80 + t * (2.00 - 1.80)
+        return hw_d, a_d
+    elif s <= 630.0:
+        t = (s - 100.0) / (630.0 - 100.0)
+        hw_d = 2.50 + t * (2.80 - 2.50)
+        a_d = 2.00 + t * (2.20 - 2.00)
+        return hw_d, a_d
+    elif s <= 2500.0:
+        t = (s - 630.0) / (2500.0 - 630.0)
+        hw_d = 2.80 + t * (3.20 - 2.80)
+        a_d = 2.20 + t * (2.40 - 2.20)
+        return hw_d, a_d
+    else:
+        t = min(1.0, (s - 2500.0) / (50000.0 - 2500.0))
+        hw_d = 3.20 + t * (3.60 - 3.20)
+        a_d = 2.30 + t * (2.50 - 2.30)
+        return hw_d, a_d
+

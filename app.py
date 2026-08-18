@@ -6,72 +6,185 @@ import pymupdf  # fitz
 
 from engine import calculate_all
 from engine.pdf_report import build_pdf_report
+from engine.excel_report import build_excel_report
+
+import threading
 
 app = Flask(__name__)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
-# In-memory cache for metal prices to optimize response latency
-_PRICES_CACHE = {
-    "prices": {"copper_usd_kg": 9.50, "aluminum_usd_kg": 2.50, "usd_try": 34.00},
-    "sources": {"copper": "", "aluminum": "", "usd_try": ""},
-    "timestamp": 0
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+import os
+import json
+from datetime import datetime
+
+CACHE_FILE = os.path.join(os.path.dirname(__file__), 'prices_cache.json')
+
+# In-memory cache for metal and energy prices with persistence & fallback (Directive 6)
+_DEFAULT_PRICES = {
+    "copper_usd_kg": 9.50,
+    "aluminum_usd_kg": 2.50,
+    "usd_try": 34.00,
+    "electricity_usd_kwh": 0.103,
+    "electricity_try_kwh": 3.50
 }
-CACHE_TTL_SECONDS = 30  # 30 seconds fresh cache
+_DEFAULT_SOURCES = {
+    "copper": "https://query1.finance.yahoo.com/v8/finance/chart/HG=F",
+    "aluminum": "https://query1.finance.yahoo.com/v8/finance/chart/ALI=F",
+    "usd_try": "https://query1.finance.yahoo.com/v8/finance/chart/TRY=X",
+    "electricity": "https://www.epdk.gov.tr/"
+}
 
-def get_metal_prices(force=False):
-    """
-    Retrieves live commodity prices (Cu, Al) and USD/TRY exchange rate from Yahoo Finance.
-    Results are cached in-memory for 30 seconds for live market responsiveness.
-    """
-    now = time.time()
-    if not force and _PRICES_CACHE["timestamp"] > 0 and (now - _PRICES_CACHE["timestamp"]) < CACHE_TTL_SECONDS:
-        return _PRICES_CACHE["prices"], _PRICES_CACHE["sources"]
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+def _load_cache_from_disk():
+    """Disk önbelleğinden son kaydedilen piyasa fiyatlarını yükler."""
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return {
+                    "prices": data.get("prices", _DEFAULT_PRICES),
+                    "sources": data.get("sources", _DEFAULT_SOURCES),
+                    "timestamp": data.get("timestamp", time.time())
+                }
+        except Exception:
+            pass
+    return {
+        "prices": dict(_DEFAULT_PRICES),
+        "sources": dict(_DEFAULT_SOURCES),
+        "timestamp": time.time()
     }
-    prices = {"copper_usd_kg": 9.50, "aluminum_usd_kg": 2.50, "usd_try": 34.00}
-    sources = {"copper": "", "aluminum": "", "usd_try": ""}
 
+def _save_cache_to_disk(cache_data):
+    """Güncel piyasa verilerini yerel disk önbellek dosyasına kaydeder."""
+    try:
+        with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, indent=2)
+    except Exception:
+        pass
+
+_PRICES_CACHE = _load_cache_from_disk()
+_PRICE_LOCK = threading.Lock()
+_FAILURE_COUNT = 0
+
+def _fetch_secondary_fallback(prices, sources):
+    """
+    İkincil / yedek ücretsiz API üzerinden döviz kuru verilerini çeker (Directive 6).
+    """
+    try:
+        # Frankfurter open API for USD/TRY
+        url_sec = "https://api.frankfurter.app/latest?from=USD&to=TRY"
+        resp = requests.get(url_sec, headers={'User-Agent': 'TransformerEngine/2.0'}, timeout=3)
+        if resp.status_code == 200:
+            val = resp.json().get('rates', {}).get('TRY')
+            if val:
+                prices["usd_try"] = float(val)
+                sources["usd_try"] = url_sec
+                if prices["usd_try"] > 0:
+                    prices["electricity_usd_kwh"] = round(3.50 / prices["usd_try"], 3)
+                return True
+    except Exception:
+        pass
+    return False
+
+def _fetch_yahoo_market_data():
+    """
+    Birincil ve ikincil kaynaklardan emtia ve döviz kurlarını arka planda çeker.
+    3 başarısız denemeden sonra otomatik fallback moduna geçer (Directive 6).
+    """
+    global _FAILURE_COUNT
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
+    with _PRICE_LOCK:
+        prices = dict(_PRICES_CACHE["prices"])
+        sources = dict(_PRICES_CACHE["sources"])
+
+    any_success = False
+
+    # 1. USD / TRY Kuru
     try:
         url_try = "https://query1.finance.yahoo.com/v8/finance/chart/TRY=X"
-        response_try = requests.get(url_try, headers=headers, timeout=4)
-        if response_try.status_code == 200:
-            data_try = response_try.json()
-            val = data_try['chart']['result'][0]['meta']['regularMarketPrice']
+        resp = requests.get(url_try, headers=headers, timeout=3)
+        if resp.status_code == 200:
+            val = resp.json()['chart']['result'][0]['meta'].get('regularMarketPrice')
             if val:
                 prices["usd_try"] = float(val)
                 sources["usd_try"] = url_try
+                if prices["usd_try"] > 0:
+                    prices["electricity_usd_kwh"] = round(3.50 / prices["usd_try"], 3)
+                any_success = True
+        else:
+            if _FAILURE_COUNT >= 3 and _fetch_secondary_fallback(prices, sources):
+                any_success = True
     except Exception:
-        pass
+        if _FAILURE_COUNT >= 3 and _fetch_secondary_fallback(prices, sources):
+            any_success = True
 
+    # 2. Bakır Fiyatı (LME Copper HG=F)
     try:
         url_cu = "https://query1.finance.yahoo.com/v8/finance/chart/HG=F"
-        response_cu = requests.get(url_cu, headers=headers, timeout=4)
-        if response_cu.status_code == 200:
-            data_cu = response_cu.json()
-            price_lb = data_cu['chart']['result'][0]['meta']['regularMarketPrice']
-            if price_lb:
-                prices["copper_usd_kg"] = float(price_lb) / 0.453592
+        resp = requests.get(url_cu, headers=headers, timeout=3)
+        if resp.status_code == 200:
+            val = resp.json()['chart']['result'][0]['meta'].get('regularMarketPrice')
+            if val:
+                prices["copper_usd_kg"] = float(val) / 0.453592
                 sources["copper"] = url_cu
+                any_success = True
     except Exception:
         pass
 
+    # 3. Alüminyum Fiyatı (LME Aluminum ALI=F)
     try:
         url_al = "https://query1.finance.yahoo.com/v8/finance/chart/ALI=F"
-        response_al = requests.get(url_al, headers=headers, timeout=4)
-        if response_al.status_code == 200:
-            data_al = response_al.json()
-            price_ton = data_al['chart']['result'][0]['meta']['regularMarketPrice']
-            if price_ton:
-                prices["aluminum_usd_kg"] = float(price_ton) / 1000.0
+        resp = requests.get(url_al, headers=headers, timeout=3)
+        if resp.status_code == 200:
+            val = resp.json()['chart']['result'][0]['meta'].get('regularMarketPrice')
+            if val:
+                prices["aluminum_usd_kg"] = float(val) / 1000.0
                 sources["aluminum"] = url_al
+                any_success = True
     except Exception:
         pass
 
-    _PRICES_CACHE["prices"] = prices
-    _PRICES_CACHE["sources"] = sources
-    _PRICES_CACHE["timestamp"] = now
-    return prices, sources
+    now_ts = time.time()
+    if any_success:
+        _FAILURE_COUNT = 0
+        with _PRICE_LOCK:
+            _PRICES_CACHE["prices"] = prices
+            _PRICES_CACHE["sources"] = sources
+            _PRICES_CACHE["timestamp"] = now_ts
+        _save_cache_to_disk(_PRICES_CACHE)
+    else:
+        _FAILURE_COUNT += 1
+
+def _background_price_worker():
+    """Background daemon thread that periodically refreshes live market quotes."""
+    while True:
+        try:
+            _fetch_yahoo_market_data()
+        except Exception:
+            pass
+        time.sleep(45)  # Refresh every 45 seconds
+
+# Start the background daemon worker on app startup
+_bg_thread = threading.Thread(target=_background_price_worker, daemon=True)
+_bg_thread.start()
+
+def get_metal_prices(force=False):
+    """
+    Returns live prices in 0.0001 seconds from in-memory cache.
+    Never blocks calculations with external network I/O.
+    """
+    if force:
+        threading.Thread(target=_fetch_yahoo_market_data, daemon=True).start()
+        
+    with _PRICE_LOCK:
+        return dict(_PRICES_CACHE["prices"]), dict(_PRICES_CACHE["sources"]), _PRICES_CACHE.get("timestamp", time.time())
 
 @app.route('/')
 def index():
@@ -80,16 +193,26 @@ def index():
 @app.route('/api/prices', methods=['GET'])
 def get_prices():
     force = request.args.get('force', 'false').lower() == 'true'
-    prices, sources = get_metal_prices(force=force)
+    prices, sources, ts = get_metal_prices(force=force)
+    now_ts = time.time()
+    is_stale = (now_ts - ts) > 600  # Older than 10 minutes
+    
+    last_upd_str = datetime.fromtimestamp(ts).strftime("%H:%M:%S")
     now_str = time.strftime("%H:%M:%S")
+
     return jsonify({
         "success": True,
         "prices": {
             "copper": round(prices.get("copper_usd_kg", 9.50), 2),
             "aluminum": round(prices.get("aluminum_usd_kg", 2.50), 2),
-            "usd_try": round(prices.get("usd_try", 34.00), 2)
+            "usd_try": round(prices.get("usd_try", 34.00), 2),
+            "electricity": round(prices.get("electricity_usd_kwh", 0.103), 3),
+            "electricity_try": round(prices.get("electricity_try_kwh", 3.50), 2)
         },
         "time": now_str,
+        "last_updated": ts,
+        "last_updated_str": last_upd_str,
+        "is_stale": is_stale,
         "sources": sources
     })
 
@@ -97,7 +220,7 @@ def get_prices():
 def calculate():
     try:
         data = request.json or {}
-        prices, sources = get_metal_prices()
+        prices, sources, _ = get_metal_prices()
         result = calculate_all(data, metal_prices=prices, metal_sources=sources)
         return jsonify(result)
     except Exception as e:
@@ -111,7 +234,7 @@ def download_pdf():
         else:
             data = request.args.to_dict()
             
-        prices, sources = get_metal_prices()
+        prices, sources, _ = get_metal_prices()
         calc_result = calculate_all(data, metal_prices=prices, metal_sources=sources)
         pdf_bytes = build_pdf_report(calc_result, data)
         
@@ -120,6 +243,29 @@ def download_pdf():
             mimetype='application/pdf',
             headers={
                 'Content-Disposition': 'inline; filename="Transformator_Muhendislik_Raporu.pdf"',
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+@app.route('/api/download-excel', methods=['POST', 'GET'])
+def download_excel():
+    try:
+        if request.method == 'POST':
+            data = request.json or {}
+        else:
+            data = request.args.to_dict()
+            
+        prices, sources, _ = get_metal_prices()
+        calc_result = calculate_all(data, metal_prices=prices, metal_sources=sources)
+        excel_buf = build_excel_report(data, calc_result)
+        
+        return Response(
+            excel_buf.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                'Content-Disposition': 'attachment; filename="Transformator_Muhendislik_Raporu.xlsx"',
                 'Cache-Control': 'no-cache, no-store, must-revalidate'
             }
         )

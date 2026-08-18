@@ -3,7 +3,6 @@ import math
 
 try:
     import requests
-    from bs4 import BeautifulSoup
 except ImportError as e:
     print("\n" + "="*60)
     print(" GEREKLI KUTUPHANELER EKSIK!")
@@ -11,7 +10,7 @@ except ImportError as e:
     print(f"Hata detayi: {e}")
     print("\nLutfen baslat menusunden 'cmd' yazip Komut Istemini acin ve")
     print("asagidaki komutu yazip ENTER'a basin:")
-    print("\npip install requests beautifulsoup4\n")
+    print("\npip install requests\n")
     print("Kurulum bittikten sonra bu programi tekrar acabilirsiniz.")
     input("\nCikmak icin ENTER'a basin...")
     sys.exit(1)
