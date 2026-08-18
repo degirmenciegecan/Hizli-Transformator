@@ -1204,7 +1204,44 @@ body.dark-mode .btn-mode.active {
     font-weight: 700;
 }
 
-@media (max-width: 640px) {
+.sidebar-mobile-header {
+    display: none;
+}
+
+.btn-close-sidebar {
+    display: none;
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 14, 23, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ==========================================================================
+   📱 Responsive Mobile & Tablet Breakpoints
+   ========================================================================== */
+
+/* 1. Tablet Landscape / Intermediate (<= 1024px) */
+@media (max-width: 1024px) {
+    .category-cards {
+        grid-template-columns: 1fr;
+    }
+    .card.full-width {
+        grid-column: span 1;
+    }
     .cad-workbench-layout {
         grid-template-columns: 1fr;
     }
@@ -1213,12 +1250,204 @@ body.dark-mode .btn-mode.active {
     }
 }
 
-@media (max-width: 1024px) {
+/* 2. Mobile / Tablet Portrait Drawer Layout (<= 900px) */
+@media (max-width: 900px) {
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .header .logo {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+
+    .live-prices {
+        overflow-x: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 2px 6px 2px;
+        white-space: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .live-prices::-webkit-scrollbar {
+        display: none;
+    }
+
+    .price-widget {
+        flex-shrink: 0;
+        align-items: flex-start;
+    }
+
+    .live-indicator, .btn-refresh-market, #market-stale-container {
+        flex-shrink: 0;
+    }
+
+    /* Off-canvas Mobile Drawer for Sidebar */
+    .sidebar-mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .btn-close-sidebar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        font-size: 0.9rem;
+        cursor: pointer;
+        font-weight: 700;
+        transition: all 0.2s ease;
+    }
+
+    .btn-close-sidebar:hover {
+        background: rgba(239, 68, 68, 0.15);
+        color: #EF4444;
+        border-color: #EF4444;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 340px;
+        max-width: 88vw;
+        height: 100vh;
+        z-index: 1000;
+        box-shadow: 6px 0 30px rgba(0, 0, 0, 0.4);
+        transform: translateX(0);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 16px 18px;
+    }
+
+    .sidebar.collapsed {
+        margin-left: 0;
+        transform: translateX(-100%);
+        box-shadow: none;
+    }
+
+    .results-area {
+        padding: 12px 14px;
+        width: 100%;
+    }
+}
+
+/* 3. Small Mobile Devices (<= 768px) */
+@media (max-width: 768px) {
     .category-cards {
         grid-template-columns: 1fr;
+        gap: 12px;
     }
-    .card.full-width {
-        grid-column: span 1;
+
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .chart-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .chart-container {
+        height: 260px;
+    }
+
+    .report-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn-download-pdf,
+    .btn-download-excel {
+        width: 100%;
+        justify-content: center;
+        padding: 12px;
+    }
+
+    .param-list li {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.76rem;
+        padding: 5px 0;
+        flex-wrap: wrap;
+        gap: 2px 6px;
+    }
+
+    .param-list li .label {
+        max-width: 60%;
+    }
+
+    .compliance-table {
+        font-size: 0.72rem;
+    }
+
+    .compliance-table th, .compliance-table td {
+        padding: 6px 8px;
+    }
+}
+
+/* 4. Compact Smartphones (<= 480px) */
+@media (max-width: 480px) {
+    .header .logo h1 {
+        font-size: 0.95rem;
+    }
+
+    .theme-toggle-btn {
+        font-size: 0.70rem;
+        padding: 3px 8px;
+        margin-left: 4px;
+    }
+
+    .stat-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .category-group-header {
+        font-size: 0.92rem;
+    }
+
+    .category-nav {
+        padding: 6px 0;
+        gap: 4px;
+    }
+
+    .cat-tab {
+        padding: 5px 11px;
+        font-size: 0.72rem;
+    }
+
+    #toast-container {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+        min-width: auto;
+    }
+
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+        font-size: 0.78rem;
+        padding: 10px 12px;
     }
 }
 

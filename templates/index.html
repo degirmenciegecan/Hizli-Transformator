@@ -46,8 +46,15 @@
         </header>
 
         <main class="main-content">
+            <!-- Mobile Backdrop Overlay -->
+            <div id="sidebar-backdrop" class="sidebar-backdrop" title="Menüyü Kapat"></div>
+
             <!-- Sidebar Form -->
             <aside class="sidebar">
+                <div class="sidebar-mobile-header">
+                    <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary);">⚡ Trafo Parametreleri</span>
+                    <button type="button" id="btn-close-sidebar" class="btn-close-sidebar" title="Kapat">✕</button>
+                </div>
                 <!-- PDF Upload -->
                 <div class="pdf-upload-box">
                     <label style="font-weight: 600; font-size: 0.8rem; color: var(--accent-blue); display: block; margin-bottom: 4px;">Şartname Dosyası (PDF Otomatik Ayrıştırma)</label>

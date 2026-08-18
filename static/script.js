@@ -84,6 +84,14 @@ async function doCalculate(e) {
 
     console.log('doCalculate tetiklendi!');
 
+    // Mobile drawer UX: Close sidebar drawer on calculation
+    if (window.innerWidth <= 900) {
+        const sideEl = document.querySelector('.sidebar');
+        const backEl = document.getElementById('sidebar-backdrop');
+        if (sideEl) sideEl.classList.add('collapsed');
+        if (backEl) backEl.classList.remove('active');
+    }
+
     // UI state transition
     if (initialDiv) initialDiv.classList.add('hidden');
     if (resultsDiv) resultsDiv.classList.add('hidden');
@@ -1007,11 +1015,43 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Sidebar Toggle
+    // 2. Sidebar Toggle & Mobile Drawer Handling
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    const btnCloseSidebar = document.getElementById('btn-close-sidebar');
+
+    function openSidebar() {
+        if (sidebar) sidebar.classList.remove('collapsed');
+        if (window.innerWidth <= 900 && sidebarBackdrop) {
+            sidebarBackdrop.classList.add('active');
+        }
+    }
+
+    function closeSidebar() {
+        if (sidebar) sidebar.classList.add('collapsed');
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+    }
+
     if (toggleSidebarBtn && sidebar) {
         toggleSidebarBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
+            if (sidebar.classList.contains('collapsed')) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
         });
+    }
+
+    if (btnCloseSidebar) {
+        btnCloseSidebar.addEventListener('click', closeSidebar);
+    }
+
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', closeSidebar);
+    }
+
+    // Auto-collapse sidebar on initial load if on mobile screen
+    if (window.innerWidth <= 900 && sidebar) {
+        sidebar.classList.add('collapsed');
     }
 
     // 2.1 Auto A & B Factor Generator from Energy Tariff and Financial NPV
