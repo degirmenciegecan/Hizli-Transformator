@@ -13,8 +13,11 @@
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <button id="toggle-sidebar" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-primary); margin-right: 4px;" title="Menüyü Gizle/Göster">☰</button>
-                <h1 id="app-title" style="cursor: pointer; user-select: none;" title="Hızlı Transformatör">Hızlı Transformatör <span class="badge badge-blue">IEC 60076</span></h1>
+                <button id="toggle-sidebar" class="btn-toggle-menu" title="Menüyü Gizle/Göster">☰</button>
+                <div class="brand-wrapper">
+                    <h1 id="app-title" title="Hızlı Transformatör">Hızlı Transformatör</h1>
+                    <span class="badge badge-blue header-badge">IEC 60076</span>
+                </div>
                 <button id="theme-toggle" class="theme-toggle-btn" title="Karanlık/Aydınlık Tema">Karanlık Mod</button>
             </div>
             <div class="live-prices" id="live-prices">
@@ -542,14 +545,14 @@
                                 <ul class="param-list">
                                     <li><span class="label">Nüve Malzemesi:</span> <strong><span id="res-core-label"></span></strong></li>
                                     <li><span class="label">Çalışma Akı Yoğunluğu (Bm):</span> <strong><span id="res-core-bm"></span> Tesla</strong></li>
-                                    <li><span class="label">Volts/Tur Sabiti (k):</span> <strong><span id="res-k-val">0.45</span> (<span id="res-opt-mode-badge" class="badge badge-blue">Manuel</span>)</strong></li>
+                                    <li><span class="label">Volts/Tur Sabiti (k):</span> <div class="value-group"><strong><span id="res-k-val">0.45</span></strong> <span class="val-sub">(<span id="res-opt-mode-badge" class="badge badge-blue">Manuel</span>)</span></div></li>
                                     <li><span class="label">Dinamik Oranlar (Hw/d | A/d):</span> <strong><span id="res-ratio-hw">—</span> | <span id="res-ratio-a">—</span></strong></li>
                                     <li><span class="label">Kademeli Nüve Çapı (d):</span> <strong><span id="res-core-dia"></span> mm</strong></li>
                                     <li><span class="label">Bacak Merkez Mesafesi (A):</span> <strong><span id="res-limb-dist">—</span> mm</strong></li>
                                     <li><span class="label">Pencere Yüksekliği (Hw):</span> <strong><span id="res-win-height">—</span> mm</strong></li>
-                                    <li><span class="label">Net / Brüt Kesit (İstif Kf):</span> <strong><span id="res-core-ai"></span> / <span id="res-core-ag"></span> cm² (Kf: <span id="res-core-stack"></span>)</strong></li>
+                                    <li><span class="label">Net / Brüt Kesit:</span> <div class="value-group"><strong><span id="res-core-ai"></span> / <span id="res-core-ag"></span> cm²</strong> <span class="val-sub">(Kf: <span id="res-core-stack"></span>)</span></div></li>
                                     <li><span class="label">Hesapsal Nüve Ağırlığı:</span> <strong><span id="res-core-weight-detail"></span> kg</strong></li>
-                                    <li><span class="label">Hesapsal Boşta Kayıp (P0):</span> <strong><span id="res-core-p0-est"></span> W</strong> (<span id="res-core-physt"></span> W Hist + <span id="res-core-peddy"></span> W Eddy)</li>
+                                    <li><span class="label">Hesapsal Boşta Kayıp (P0):</span> <div class="value-group"><strong><span id="res-core-p0-est"></span> W</strong> <span class="val-sub">(<span id="res-core-physt"></span> W Hist + <span id="res-core-peddy"></span> W Eddy)</span></div></li>
                                 </ul>
                             </div>
 
@@ -559,17 +562,17 @@
                                 <ul class="param-list">
                                     <li><span class="label">Spesifik Gerilim (Et):</span> <strong><span id="res-et-val"></span> V/Tur</strong></li>
                                     <li><span class="label">Primer / Sekonder Sarım:</span> <strong><span id="res-hv-turns"></span> / <span id="res-lv-turns"></span> Tur</strong></li>
-                                    <li><span class="label">Primer Kesit / Çap:</span> <strong><span id="res-hv-area"></span> mm² (<span id="res-hv-dia"></span> mm)</strong></li>
-                                    <li><span class="label">Sekonder Kesit / Çap:</span> <strong><span id="res-lv-area"></span> mm² (<span id="res-lv-dia"></span> mm)</strong></li>
-                                    <li><span class="label">Toplam İletken Boyu (HV / LV):</span> <strong>HV: <span id="res-len-hv"></span> m | LV: <span id="res-len-lv"></span> m</strong></li>
+                                    <li><span class="label">Primer Kesit / Çap:</span> <div class="value-group"><strong><span id="res-hv-area"></span> mm²</strong> <span class="val-sub">(Ø <span id="res-hv-dia"></span> mm)</span></div></li>
+                                    <li><span class="label">Sekonder Kesit / Çap:</span> <div class="value-group"><strong><span id="res-lv-area"></span> mm²</strong> <span class="val-sub">(Ø <span id="res-lv-dia"></span> mm)</span></div></li>
+                                    <li><span class="label">Toplam İletken Boyu (HV/LV):</span> <div class="value-group"><strong>HV: <span id="res-len-hv"></span> m</strong> <span class="val-sub">LV: <span id="res-len-lv"></span> m</span></div></li>
                                     <li><span class="label">Paralel İletken (HV / LV):</span> <strong><span id="res-par-hv"></span> / <span id="res-par-lv"></span></strong></li>
-                                    <li><span class="label">Ortalama Sarım Boyu (MLT):</span> <strong>HV: <span id="res-mlt-hv"></span> mm | LV: <span id="res-mlt-lv"></span> mm</strong></li>
+                                    <li><span class="label">Ortalama Sarım Boyu (MLT):</span> <div class="value-group"><strong>HV: <span id="res-mlt-hv"></span> mm</strong> <span class="val-sub">LV: <span id="res-mlt-lv"></span> mm</span></div></li>
                                     <li><span class="label">75°C IEC Direnci (HV / LV):</span> <strong><span id="res-r75-hv"></span> Ω / <span id="res-r75-lv"></span> Ω</strong></li>
-                                    <li><span class="label">Deri Kalınlığı (Skin Depth δ @ 75°C):</span> <strong>HV: <span id="res-delta-hv"></span> mm | LV: <span id="res-delta-lv"></span> mm</strong></li>
+                                    <li><span class="label">Deri Kalınlığı (δ @ 75°C):</span> <strong>HV: <span id="res-delta-hv"></span> mm | LV: <span id="res-delta-lv"></span> mm</strong></li>
                                     <li style="border-top: 1px solid var(--border); padding-top: 4px;"><span class="label">DC Bakır Kaybı (Pdc):</span> <strong><span id="res-pk-dc"></span> W</strong></li>
-                                    <li><span class="label">Sargı Eddy Kaybı (Peddy):</span> <strong style="color: var(--accent-cyan);"><span id="res-pk-eddy"></span> W (<span id="res-kec-pct"></span>%)</strong></li>
-                                    <li><span class="label">Kazan Saçılma Kaybı (P_stray):</span> <strong style="color: var(--accent-orange);"><span id="res-pk-stray"></span> W (<span id="res-stray-pct"></span>%)</strong></li>
-                                    <li style="border-top: 1px solid var(--border); padding-top: 6px;"><span class="label" style="font-weight: 600;">Hesaplanan Pk vs Garanti Pk:</span> <strong style="color: var(--accent-green);"><span id="res-pk-calc-total"></span> W / <span id="res-pk-guar"></span> W (<span id="res-pk-diff-label"></span>)</strong></li>
+                                    <li><span class="label">Sargı Eddy Kaybı (Peddy):</span> <div class="value-group"><strong style="color: var(--accent-cyan);"><span id="res-pk-eddy"></span> W</strong> <span class="val-sub">(<span id="res-kec-pct"></span>%)</span></div></li>
+                                    <li><span class="label">Kazan Saçılma Kaybı (P_stray):</span> <div class="value-group"><strong style="color: var(--accent-orange);"><span id="res-pk-stray"></span> W</strong> <span class="val-sub">(<span id="res-stray-pct"></span>%)</span></div></li>
+                                    <li style="border-top: 1px solid var(--border); padding-top: 6px;"><span class="label" style="font-weight: 600;">Hesaplanan Pk vs Garanti Pk:</span> <div class="value-group"><strong style="color: var(--accent-green);"><span id="res-pk-calc-total"></span> W / <span id="res-pk-guar"></span> W</strong> <span class="val-sub">(<span id="res-pk-diff-label"></span>)</span></div></li>
                                 </ul>
                             </div>
 
