@@ -1558,19 +1558,49 @@ body.dark-mode .btn-mode.active {
         height: 260px;
     }
 
+    .cad-header-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .cad-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .cad-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.72rem;
+    }
+
+    .btn-cad-dl {
+        margin-left: auto;
+        padding: 4px 8px;
+        font-size: 0.72rem;
+    }
+
     .action-buttons,
     .report-actions {
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
+        margin-top: 24px;
+        margin-bottom: 100px;
+        padding-bottom: 20px;
     }
 
     .action-btn,
     .btn-download-pdf,
     .btn-download-excel {
         width: 100%;
+        min-height: 48px;
         justify-content: center;
         padding: 12px;
-        font-size: 0.88rem;
+        font-size: 0.90rem;
     }
 
     .param-list li {
@@ -1591,17 +1621,18 @@ body.dark-mode .btn-mode.active {
     .param-list li .value-group {
         text-align: right;
         flex-shrink: 0;
-        max-width: 58%;
+        max-width: 65%;
         line-height: 1.35;
+        word-break: break-word;
     }
 
     .data-table {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
 
     .data-table th, .data-table td,
     .compliance-table th, .compliance-table td {
-        padding: 6px 8px;
+        padding: 6px 6px;
     }
 }
 
