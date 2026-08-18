@@ -1316,6 +1316,26 @@ body.dark-mode .btn-mode.active {
 
 /* 2. Mobile / Tablet Portrait Drawer Layout (<= 900px) */
 @media (max-width: 900px) {
+    body {
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        height: auto !important;
+        min-height: 100%;
+    }
+
+    .dashboard {
+        height: auto !important;
+        min-height: 100vh;
+        min-height: 100dvh;
+        overflow: visible !important;
+    }
+
+    .main-content {
+        height: auto !important;
+        overflow: visible !important;
+        flex: 1 0 auto;
+    }
+
     .header {
         flex-direction: column;
         align-items: stretch;
@@ -1430,15 +1450,16 @@ body.dark-mode .btn-mode.active {
         border-color: #EF4444;
     }
 
-    /* Mobile State 1: Initial (Before Calculation) - Form is the Full-Width Homepage */
+    /* Mobile State 1: Initial (Before Calculation) - Form is the Full-Width Scrollable Homepage */
     body.is-initial-state .sidebar {
         position: static;
         width: 100%;
         max-width: 100%;
-        height: auto;
+        height: auto !important;
+        overflow: visible !important;
         box-shadow: none;
         transform: none;
-        padding: 16px 14px;
+        padding: 16px 14px 80px 14px;
         border-right: none;
     }
 
@@ -1459,11 +1480,14 @@ body.dark-mode .btn-mode.active {
         width: 340px;
         max-width: 88vw;
         height: 100vh;
+        height: 100dvh;
         z-index: 1000;
         box-shadow: 6px 0 30px rgba(0, 0, 0, 0.4);
         transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        padding: 16px 18px;
+        padding: 16px 18px 60px 18px;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     body.is-calculated .sidebar.collapsed {
@@ -1473,8 +1497,16 @@ body.dark-mode .btn-mode.active {
 
     body.is-calculated .results-area {
         display: block;
-        padding: 10px 12px;
+        padding: 10px 12px 60px 12px;
         width: 100%;
+        height: auto;
+        overflow: visible;
+    }
+
+    .btn-calculate {
+        margin: 18px 0 28px 0;
+        padding: 14px;
+        font-size: 1.02rem;
     }
 
     .mobile-results-header {
