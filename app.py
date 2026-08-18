@@ -113,8 +113,13 @@ def calculate():
             Vk, Zk, Rk, Xk = ("—",) * 4
         else:
             Vk = V1 * (uk / 100.0)
-            Zk = Vk / I1
-            Rk = Pk / (I1**2)
+            # Per-phase equivalent circuit parameters (referred to primary)
+            if phase == 3:
+                Zk = Vk / (math.sqrt(3) * I1)     # Ω/faz
+                Rk = Pk / (3 * I1**2)              # Ω/faz
+            else:
+                Zk = Vk / I1                       # Ω
+                Rk = Pk / (I1**2)                  # Ω
             if Zk**2 >= Rk**2:
                 Xk = math.sqrt(Zk**2 - Rk**2)
             else:
@@ -125,8 +130,28 @@ def calculate():
         
         if None in [S, P0, Pk]:
             efficiency = "—"
+            ur_pct = "—"
+            ux_pct = "—"
+            max_eff_load = "—"
+            voltage_reg = "—"
         else:
             efficiency = (S / (S + P0 + Pk)) * 100.0
+            # Impedance % components
+            ur_pct = (Pk / S) * 100.0   # Resistive component (%)
+            if uk is not None:
+                ux_pct = math.sqrt(uk**2 - ur_pct**2) if uk**2 >= ur_pct**2 else 0
+            else:
+                ux_pct = "—"
+            # Max efficiency load point
+            max_eff_load = math.sqrt(P0 / Pk) if Pk > 0 else "—"
+            # Voltage regulation at cosφ=0.8 lagging (common industrial load)
+            if uk is not None and ux_pct != "—":
+                cos_phi = 0.8
+                sin_phi = math.sqrt(1 - cos_phi**2)
+                voltage_reg = ur_pct * cos_phi + ux_pct * sin_phi + \
+                              ((ux_pct * cos_phi - ur_pct * sin_phi)**2) / 200
+            else:
+                voltage_reg = "—"
         
         # Current Density (J) A/mm2 assumption based on material
         J_hv = 3.0 if material_hv == 'Cu' else 1.5
@@ -152,10 +177,14 @@ def calculate():
             "a": r4(a),
             "Vk": r2(Vk),
             "Zk": r4(Zk),
-            "Rk": r4(Rk) if 'Rk' in locals() else "—",
+            "Rk": r4(Rk),
             "Xk": r4(Xk),
             "Lk_mH": r2(Lk * 1000) if Lk != "—" else "—",
+            "ur_pct": r2(ur_pct),
+            "ux_pct": r2(ux_pct),
             "efficiency": r2(efficiency),
+            "max_eff_load": r2(max_eff_load),
+            "voltage_reg_08": r2(voltage_reg),
             "Et": r4(Et),
             "N1": N1,
             "N2": N2,
