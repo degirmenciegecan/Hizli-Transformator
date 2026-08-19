@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, Response
 import time
-import requests
+import urllib.request
 import re
 import pymupdf  # fitz
 
@@ -9,6 +9,9 @@ from engine.pdf_report import build_pdf_report
 from engine.excel_report import build_excel_report
 
 import threading
+import os
+import json
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -19,10 +22,6 @@ def add_no_cache_headers(response):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
-
-import os
-import json
-from datetime import datetime
 
 CACHE_FILE = os.path.join(os.path.dirname(__file__), 'prices_cache.json')
 
@@ -40,6 +39,20 @@ _DEFAULT_SOURCES = {
     "usd_try": "https://query1.finance.yahoo.com/v8/finance/chart/TRY=X",
     "electricity": "https://www.epdk.gov.tr/"
 }
+
+def _http_get_json(url, headers=None, timeout=3):
+    """Standart kütüphane urllib ile güvenli JSON GET isteği atar."""
+    try:
+        hdrs = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        if headers:
+            hdrs.update(headers)
+        req = urllib.request.Request(url, headers=hdrs)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.status == 200:
+                return json.loads(resp.read().decode('utf-8', errors='ignore'))
+    except Exception:
+        pass
+    return None
 
 def _load_cache_from_disk():
     """Disk önbelleğinden son kaydedilen piyasa fiyatlarını yükler."""
@@ -77,11 +90,10 @@ def _fetch_secondary_fallback(prices, sources):
     İkincil / yedek ücretsiz API üzerinden döviz kuru verilerini çeker (Directive 6).
     """
     try:
-        # Frankfurter open API for USD/TRY
         url_sec = "https://api.frankfurter.app/latest?from=USD&to=TRY"
-        resp = requests.get(url_sec, headers={'User-Agent': 'TransformerEngine/2.0'}, timeout=3)
-        if resp.status_code == 200:
-            val = resp.json().get('rates', {}).get('TRY')
+        data = _http_get_json(url_sec, timeout=3)
+        if data:
+            val = data.get('rates', {}).get('TRY')
             if val:
                 prices["usd_try"] = float(val)
                 sources["usd_try"] = url_sec
@@ -98,7 +110,6 @@ def _fetch_yahoo_market_data():
     3 başarısız denemeden sonra otomatik fallback moduna geçer (Directive 6).
     """
     global _FAILURE_COUNT
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
     with _PRICE_LOCK:
         prices = dict(_PRICES_CACHE["prices"])
@@ -109,9 +120,9 @@ def _fetch_yahoo_market_data():
     # 1. USD / TRY Kuru
     try:
         url_try = "https://query1.finance.yahoo.com/v8/finance/chart/TRY=X"
-        resp = requests.get(url_try, headers=headers, timeout=3)
-        if resp.status_code == 200:
-            val = resp.json()['chart']['result'][0]['meta'].get('regularMarketPrice')
+        data = _http_get_json(url_try, timeout=3)
+        if data and 'chart' in data and data['chart'].get('result'):
+            val = data['chart']['result'][0]['meta'].get('regularMarketPrice')
             if val:
                 prices["usd_try"] = float(val)
                 sources["usd_try"] = url_try
@@ -128,9 +139,9 @@ def _fetch_yahoo_market_data():
     # 2. Bakır Fiyatı (LME Copper HG=F)
     try:
         url_cu = "https://query1.finance.yahoo.com/v8/finance/chart/HG=F"
-        resp = requests.get(url_cu, headers=headers, timeout=3)
-        if resp.status_code == 200:
-            val = resp.json()['chart']['result'][0]['meta'].get('regularMarketPrice')
+        data = _http_get_json(url_cu, timeout=3)
+        if data and 'chart' in data and data['chart'].get('result'):
+            val = data['chart']['result'][0]['meta'].get('regularMarketPrice')
             if val:
                 prices["copper_usd_kg"] = float(val) / 0.453592
                 sources["copper"] = url_cu
@@ -141,9 +152,9 @@ def _fetch_yahoo_market_data():
     # 3. Alüminyum Fiyatı (LME Aluminum ALI=F)
     try:
         url_al = "https://query1.finance.yahoo.com/v8/finance/chart/ALI=F"
-        resp = requests.get(url_al, headers=headers, timeout=3)
-        if resp.status_code == 200:
-            val = resp.json()['chart']['result'][0]['meta'].get('regularMarketPrice')
+        data = _http_get_json(url_al, timeout=3)
+        if data and 'chart' in data and data['chart'].get('result'):
+            val = data['chart']['result'][0]['meta'].get('regularMarketPrice')
             if val:
                 prices["aluminum_usd_kg"] = float(val) / 1000.0
                 sources["aluminum"] = url_al

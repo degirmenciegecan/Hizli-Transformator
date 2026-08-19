@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hızlı Transformatör — Güç Transformatörü Tasarım & Analiz Sistemi</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=48.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=49.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -15,7 +15,7 @@
             <div class="logo">
                 <button id="toggle-sidebar" class="btn-toggle-menu" title="Menüyü Gizle/Göster">☰</button>
                 <div class="brand-wrapper">
-                    <h1 id="app-title" title="Hızlı Transformatör">Hızlı Transformatör</h1>
+                    <h1 id="app-title" title="Hızlı Transformatör"><span class="title-full">Hızlı Transformatör</span><span class="title-short">⚡ HT</span></h1>
                     <span class="badge badge-blue header-badge">IEC 60076</span>
                 </div>
                 <button id="theme-toggle" class="theme-toggle-btn" title="Karanlık/Aydınlık Tema">Karanlık Mod</button>
@@ -479,18 +479,20 @@
                                         <div class="val"><span id="res-max-reg-cos"></span></div>
                                     </div>
                                 </div>
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Güç Faktörü (cosφ)</th>
-                                            <th>Gerilim Düşümü (ε%)</th>
-                                            <th>Yükte V2 Gerilimi (V)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody-vreg">
-                                        <!-- Dinamik -->
-                                    </tbody>
-                                </table>
+                                <div class="table-wrapper">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Güç Faktörü (cosφ)</th>
+                                                <th>Gerilim Düşümü (ε%)</th>
+                                                <th>Yükte V2 Gerilimi (V)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-vreg">
+                                            <!-- Dinamik -->
+                                        </tbody>
+                                    </table>
+                                </div>
                                 <div class="chart-box" style="margin-top: 14px;">
                                     <div class="chart-header">
                                         <span>Gerilim Regülasyonu Eğrisi (cosφ vs ε%)</span>
@@ -696,19 +698,21 @@
                                     </div>
                                 </div>
 
-                                <table class="data-table" id="table-efficiency">
-                                    <thead>
-                                        <tr>
-                                            <th>Yük Seviyesi (x)</th>
-                                            <th>cosφ = 1.00</th>
-                                            <th>cosφ = 0.90 (Endüktif)</th>
-                                            <th>cosφ = 0.80 (Endüstriyel)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody-efficiency">
-                                        <!-- Dinamik -->
-                                    </tbody>
-                                </table>
+                                <div class="table-wrapper">
+                                    <table class="data-table" id="table-efficiency">
+                                        <thead>
+                                            <tr>
+                                                <th>Yük Seviyesi (x)</th>
+                                                <th>cosφ = 1.00</th>
+                                                <th>cosφ = 0.90 (Endüktif)</th>
+                                                <th>cosφ = 0.80 (Endüstriyel)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-efficiency">
+                                            <!-- Dinamik -->
+                                        </tbody>
+                                    </table>
+                                </div>
 
                                 <div class="chart-box" style="margin-top: 18px;">
                                     <div class="chart-header">
@@ -765,7 +769,7 @@
                                         <span>Bakır (Cu) vs Alüminyum (Al) İhale Kıyaslaması</span>
                                         <span class="badge badge-purple" id="res-comp-advantage">İhale Karar Analizi</span>
                                     </div>
-                                    <div style="overflow-x: auto; margin-top: 6px;">
+                                    <div class="table-wrapper" style="overflow-x: auto; margin-top: 6px;">
                                         <table class="data-table">
                                             <thead>
                                                 <tr>
