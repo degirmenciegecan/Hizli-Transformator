@@ -1714,9 +1714,9 @@ body.dark-mode .btn-mode.active {
         flex-direction: column !important;
         align-items: flex-start !important;
         justify-content: flex-start !important;
-        gap: 3px !important;
+        gap: 2px !important;
         font-size: 0.80rem !important;
-        padding: 7px 0 !important;
+        padding: 6px 0 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
@@ -1728,26 +1728,39 @@ body.dark-mode .btn-mode.active {
         line-height: 1.35 !important;
     }
 
-    .param-list li strong,
+    .param-list li strong {
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        color: var(--text-primary);
+        display: inline-block !important;
+        white-space: nowrap !important;
+        text-align: left !important;
+        line-height: 1.35 !important;
+    }
+
     .param-list li .value-group {
         width: 100% !important;
         max-width: 100% !important;
         text-align: left !important;
         display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 2px !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: baseline !important;
+        gap: 4px 6px !important;
         line-height: 1.35 !important;
-        word-break: break-word !important;
+    }
+
+    .param-list li .value-group strong {
         font-size: 0.88rem !important;
-        color: var(--text-primary);
+        white-space: nowrap !important;
+        display: inline-block !important;
     }
 
     .param-list li .val-sub {
-        font-size: 0.74rem !important;
+        font-size: 0.72rem !important;
         color: var(--text-muted);
-        word-break: break-word !important;
-        text-align: left !important;
+        white-space: nowrap !important;
+        display: inline-block !important;
     }
 
     .chart-header {
@@ -1766,6 +1779,30 @@ body.dark-mode .btn-mode.active {
     .chart-header .badge {
         font-size: 0.70rem;
         white-space: normal;
+        align-self: flex-start;
+    }
+
+    .category-group-header {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 0.92rem;
+    }
+
+    .category-group-header span.cat-badge {
+        align-self: flex-start;
+    }
+
+    .card h3 {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 0.88rem;
+    }
+
+    .card h3 .badge {
         align-self: flex-start;
     }
 
